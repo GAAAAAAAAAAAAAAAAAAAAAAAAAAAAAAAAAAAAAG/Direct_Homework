@@ -112,6 +112,10 @@ public:
 
 	virtual void Render(ID3D12GraphicsCommandList *pd3dCommandList, CCamera *pCamera, int nPipelineState=0);
 
+	//추가--
+	int GetNumberOfObjects() { return(m_nObjects); }
+	//-----
+
 //protected:
 public:	// 수정
 	CGameObject						**m_ppObjects = 0;

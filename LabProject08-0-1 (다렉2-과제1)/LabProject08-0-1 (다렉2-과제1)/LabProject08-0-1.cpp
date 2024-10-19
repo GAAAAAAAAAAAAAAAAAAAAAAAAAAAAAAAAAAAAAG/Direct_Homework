@@ -163,23 +163,23 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 	return((INT_PTR)FALSE);
 }
 
-#ifdef _DEBUG
-
-
-
-#ifdef UNICODE                                                                                      
-
-#pragma comment(linker, "/entry:wWinMainCRTStartup /subsystem:console") 
-
-#else                                                                                                    
-
-#pragma comment(linker, "/entry:WinMainCRTStartup /subsystem:console")   
-
-#endif                                                                                                   
-
-
-#endif  
-int main()
-{
-
-}
+//#ifdef _DEBUG
+//
+//
+//
+//#ifdef UNICODE                                                                                      
+//
+//#pragma comment(linker, "/entry:wWinMainCRTStartup /subsystem:console") 
+//
+//#else                                                                                                    
+//
+//#pragma comment(linker, "/entry:WinMainCRTStartup /subsystem:console")   
+//
+//#endif                                                                                                   
+//
+//
+//#endif  
+//int main()
+//{
+//
+//}
