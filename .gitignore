@@ -1,0 +1,21 @@
+# 컴파일된 소스 파일들
+*.class
+*.dll
+*.exe
+*.o
+*.obj
+
+# 디렉토리 무시
+bin/
+obj/
+
+# 로그 파일 무시
+*.log
+
+# 임시 파일 무시
+*.tmp
+*.swp
+*.swo
+
+# 특정 파일 무시 (예: README.md)
+README.md
