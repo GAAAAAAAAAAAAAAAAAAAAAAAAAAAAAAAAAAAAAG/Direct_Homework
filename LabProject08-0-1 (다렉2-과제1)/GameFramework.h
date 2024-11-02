@@ -41,6 +41,8 @@ public:
 	void OnProcessingKeyboardMessage(HWND hWnd, UINT nMessageID, WPARAM wParam, LPARAM lParam);
 	LRESULT CALLBACK OnProcessingWindowMessage(HWND hWnd, UINT nMessageID, WPARAM wParam, LPARAM lParam);
 
+	// 추가 시도
+	void ChangeScene();
 private:
 	HINSTANCE					m_hInstance;
 	HWND						m_hWnd; 
@@ -71,6 +73,10 @@ private:
 	ID3D12Fence					*m_pd3dFence = NULL;
 	UINT64						m_nFenceValues[m_nSwapChainBuffers];
 	HANDLE						m_hFenceEvent;
+
+	//추가----
+	CGameObject* m_pLockedObject = NULL;
+	//-------
 
 #if defined(_DEBUG)
 	ID3D12Debug					*m_pd3dDebugController;

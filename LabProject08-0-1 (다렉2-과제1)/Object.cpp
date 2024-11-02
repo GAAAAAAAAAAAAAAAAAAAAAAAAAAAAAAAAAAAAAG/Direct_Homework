@@ -113,6 +113,14 @@ void CTexture::LoadTextureFromDDSFile(ID3D12Device* pd3dDevice, ID3D12GraphicsCo
 	m_ppd3dTextures[nIndex] = ::CreateTextureResourceFromDDSFile(pd3dDevice, pd3dCommandList, pszFileName, &m_ppd3dTextureUploadBuffers[nIndex], D3D12_RESOURCE_STATE_GENERIC_READ/*D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE*/);
 }
 
+//추가---
+void CTexture::LoadTextureFromWICFile(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, wchar_t* pszFileName, UINT nResourceType, UINT nIndex)
+{
+	m_pnResourceTypes[nIndex] = nResourceType;
+	m_ppd3dTextures[nIndex] = ::CreateTextureResourceFromWICFile(pd3dDevice, pd3dCommandList, pszFileName, &m_ppd3dTextureUploadBuffers[nIndex], D3D12_RESOURCE_STATE_GENERIC_READ/*D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE*/);
+}
+//------
+
 void CTexture::LoadBuffer(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, void* pData, UINT nElements, UINT nStride, DXGI_FORMAT ndxgiFormat, UINT nIndex)
 {
 	m_pnResourceTypes[nIndex] = RESOURCE_BUFFER;
@@ -388,6 +396,13 @@ void CGameObject::SetMesh(int nIndex, CMesh* pMesh)
 		m_ppMeshes[nIndex] = pMesh;
 		if (pMesh) pMesh->AddRef();
 	}
+}
+// 요것도 추가
+void CGameObject::SetMesh(CMesh* pMesh)
+{
+	if (m_pMesh) m_pMesh->Release();
+	m_pMesh = pMesh;
+	if (m_pMesh) m_pMesh->AddRef();
 }
 //----
 
@@ -881,8 +896,11 @@ CSkyBox::CSkyBox(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dComman
 	CreateShaderVariables(pd3dDevice, pd3dCommandList);
 
 	CTexture *pSkyBoxTexture = new CTexture(1, RESOURCE_TEXTURE_CUBE, 0, 1);
-	pSkyBoxTexture->LoadTextureFromDDSFile(pd3dDevice, pd3dCommandList, L"SkyBox/SkyBox_0.dds", RESOURCE_TEXTURE_CUBE, 0);
-//	pSkyBoxTexture->LoadTextureFromDDSFile(pd3dDevice, pd3dCommandList, L"SkyBox/SkyBox_1.dds", RESOURCE_TEXTURE_CUBE, 0);
+	//pSkyBoxTexture->LoadTextureFromDDSFile(pd3dDevice, pd3dCommandList, L"SkyBox/SkyBox_0.dds", RESOURCE_TEXTURE_CUBE, 0);	//원래 이거였음
+	pSkyBoxTexture->LoadTextureFromDDSFile(pd3dDevice, pd3dCommandList, L"SkyBox/SkyBox_1.dds", RESOURCE_TEXTURE_CUBE, 0);
+
+	//수정
+	//pSkyBoxTexture->LoadTextureFromDDSFile(pd3dDevice, pd3dCommandList, L"SkyBox/NewSky2.dds", RESOURCE_TEXTURE_CUBE, 0);
 
 	CSkyBoxShader *pSkyBoxShader = new CSkyBoxShader();
 	pSkyBoxShader->CreateShader(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature);
@@ -914,6 +932,16 @@ void CSkyBox::Render(ID3D12GraphicsCommandList *pd3dCommandList, CCamera *pCamer
 //
 CSuperCobraObject::CSuperCobraObject(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList, ID3D12RootSignature *pd3dGraphicsRootSignature) : CGameObject(0, 0)
 {
+	CMesh* pBulletMesh = new CMesh(pd3dDevice, pd3dCommandList, "Model/bullet.bin", false);
+	for (int i = 0; i < BULLETS; i++)
+	{
+		m_ppBullets_E[i] = new CBulletObject(m_fBulletEffectiveRange);
+		m_ppBullets_E[i]->SetMesh(pBulletMesh);
+		m_ppBullets_E[i]->SetRotationAxis(XMFLOAT3(0.0f, 1.0f, 0.0f));
+		m_ppBullets_E[i]->SetRotationSpeed(360.0f);
+		m_ppBullets_E[i]->SetMovingSpeed(120.0f);
+		m_ppBullets_E[i]->SetActive(false);
+	}
 }
 
 CSuperCobraObject::~CSuperCobraObject()
@@ -942,10 +970,47 @@ void CSuperCobraObject::Animate(float fTimeElapsed, XMFLOAT4X4 *pxmf4x4Parent)
 	CGameObject::Animate(fTimeElapsed, pxmf4x4Parent);
 }
 
+void CSuperCobraObject::FireBullet()
+{
+	CBulletObject* pBulletObject = NULL;
+	for (int i = 0; i < BULLETS; i++)
+	{
+		if (!m_ppBullets_E[i]->m_bActive)
+		{
+			pBulletObject = m_ppBullets_E[i];
+			break;
+		}
+	}
+
+	if (pBulletObject)
+	{
+		XMFLOAT3 xmf3Position = GetPosition();
+		XMFLOAT3 Playerxmf3Position = target->GetPosition();
+		XMFLOAT3 xmf3Direction = GetLook();
+		XMFLOAT3 xmf3FirePosition = Vector3::Add(xmf3Position, Vector3::ScalarProduct(xmf3Direction, 6.0f, false));
+
+		pBulletObject->m_xmf4x4World = m_xmf4x4World;
+
+		pBulletObject->SetFirePosition(xmf3FirePosition);
+		pBulletObject->SetMovingDirection(Playerxmf3Position - xmf3Position);
+		pBulletObject->SetActive(true);
+	}
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 //
 CGunshipObject::CGunshipObject(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList, ID3D12RootSignature *pd3dGraphicsRootSignature) : CGameObject(0, 0)
 {
+	CMesh* pBulletMesh = new CMesh(pd3dDevice, pd3dCommandList, "Model/bullet.bin", false);
+	for (int i = 0; i < BULLETS; i++)
+	{
+		m_ppBullets_E[i] = new CBulletObject(m_fBulletEffectiveRange);
+		m_ppBullets_E[i]->SetMesh(pBulletMesh);
+		m_ppBullets_E[i]->SetRotationAxis(XMFLOAT3(0.0f, 1.0f, 0.0f));
+		m_ppBullets_E[i]->SetRotationSpeed(360.0f);
+		m_ppBullets_E[i]->SetMovingSpeed(120.0f);
+		m_ppBullets_E[i]->SetActive(false);
+	}
 }
 
 CGunshipObject::~CGunshipObject()
@@ -973,6 +1038,35 @@ void CGunshipObject::Animate(float fTimeElapsed, XMFLOAT4X4 *pxmf4x4Parent)
 
 	CGameObject::Animate(fTimeElapsed, pxmf4x4Parent);
 }
+
+//추가-------------
+void CGunshipObject::FireBullet()
+{
+	CBulletObject* pBulletObject = NULL;
+	for (int i = 0; i < BULLETS; i++)
+	{
+		if (!m_ppBullets_E[i]->m_bActive)
+		{
+			pBulletObject = m_ppBullets_E[i];
+			break;
+		}
+	}
+
+	if (pBulletObject)
+	{
+		XMFLOAT3 xmf3Position = GetPosition();
+		XMFLOAT3 Playerxmf3Position = target->GetPosition();
+		XMFLOAT3 xmf3Direction = GetLook();
+		XMFLOAT3 xmf3FirePosition = Vector3::Add(xmf3Position, Vector3::ScalarProduct(xmf3Direction, 6.0f, false));
+
+		pBulletObject->m_xmf4x4World = m_xmf4x4World;
+
+		pBulletObject->SetFirePosition(xmf3FirePosition);
+		pBulletObject->SetMovingDirection(Playerxmf3Position - xmf3Position);
+		pBulletObject->SetActive(true);
+	}
+}
+//----------------
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 //
@@ -1095,3 +1189,83 @@ void CGrassObject::Animate(float fDeltaTime)
 	Rotate(0.0f, 0.0f, m_fRotationAngle);
 }
 //--------
+
+//총알 추가------------------------
+/////////////////////////////////총알////////////////////////////
+CBulletObject::CBulletObject(float fEffectiveRange)
+{
+	m_fBulletEffectiveRange = fEffectiveRange;
+}
+
+CBulletObject::~CBulletObject()
+{
+}
+
+void CBulletObject::Animate(float fElapsedTime)
+{
+	m_fElapsedTimeAfterFire += fElapsedTime;
+
+	float fDistance = m_fMovingSpeed * fElapsedTime;
+
+	if ((m_fElapsedTimeAfterFire > m_fLockingDelayTime) && m_pLockedObject)	//락된 오브젝트가 있다면
+	{
+		XMFLOAT3 xmf3Position = GetPosition();
+		XMVECTOR xmvPosition = XMLoadFloat3(&xmf3Position);
+
+		XMFLOAT3 xmf3LockedObjectPosition = m_pLockedObject->GetPosition();
+		XMVECTOR xmvLockedObjectPosition = XMLoadFloat3(&xmf3LockedObjectPosition);
+		XMVECTOR xmvToLockedObject = xmvLockedObjectPosition - xmvPosition;	//락된 오브젝트들을 뺄셈하고
+		xmvToLockedObject = XMVector3Normalize(xmvToLockedObject);
+
+		XMVECTOR xmvMovingDirection = XMLoadFloat3(&m_xmf3MovingDirection); //락된 오브젝트를 향해서 물체가 이동하도록 만듦
+		xmvMovingDirection = XMVector3Normalize(XMVectorLerp(xmvMovingDirection, xmvToLockedObject, 0.25f));	//그 뺼샘한 벡터들의 거리가 줄어들도록 4분의1만큼 이동하도록 만들어서
+		XMStoreFloat3(&m_xmf3MovingDirection, xmvMovingDirection);	//이동방향을 바꿔줌.
+	}
+#ifdef _WITH_VECTOR_OPERATION
+	XMFLOAT3 xmf3Position = GetPosition();
+
+	m_fRotationAngle += m_fRotationSpeed * fElapsedTime;
+	if (m_fRotationAngle > 360.0f) m_fRotationAngle = m_fRotationAngle - 360.0f;
+
+	XMFLOAT4X4 mtxRotate1 = Matrix4x4::RotationYawPitchRoll(0.0f, m_fRotationAngle, 0.0f);
+
+	XMFLOAT3 xmf3RotationAxis = Vector3::CrossProduct(m_xmf3RotationAxis, m_xmf3MovingDirection, true);
+	float fDotProduct = Vector3::DotProduct(m_xmf3RotationAxis, m_xmf3MovingDirection);
+	float fRotationAngle = ::IsEqual(fDotProduct, 1.0f) ? 0.0f : (float)XMConvertToDegrees(acos(fDotProduct));
+	XMFLOAT4X4 mtxRotate2 = Matrix4x4::RotationAxis(xmf3RotationAxis, fRotationAngle);
+
+	m_xmf4x4World = Matrix4x4::Multiply(mtxRotate1, mtxRotate2);
+
+	XMFLOAT3 xmf3Movement = Vector3::ScalarProduct(m_xmf3MovingDirection, fDistance, false);
+	xmf3Position = Vector3::Add(xmf3Position, xmf3Movement);
+	SetPosition(xmf3Position);
+#else
+	XMMATRIX xmRotate = XMMatrixRotationRollPitchYaw(XMConvertToRadians(0.0f), XMConvertToRadians(m_fRotationSpeed * fElapsedTime), XMConvertToRadians(0.0f));
+	XMStoreFloat4x4(&m_xmf4x4World, xmRotate * XMLoadFloat4x4(&m_xmf4x4World));
+	XMFLOAT3 xmf3Position = GetPosition();
+	XMStoreFloat3(&xmf3Position, XMLoadFloat3(&xmf3Position) + (XMLoadFloat3(&m_xmf3MovingDirection) * fDistance));
+	m_xmf4x4World._41 = xmf3Position.x; m_xmf4x4World._42 = xmf3Position.y; m_xmf4x4World._43 = xmf3Position.z;
+	m_fMovingDistance += fDistance;
+#endif
+
+	CGameObject::Animate(fElapsedTime);
+
+	if ((m_fMovingDistance > m_fBulletEffectiveRange) || (m_fElapsedTimeAfterFire > m_fLockingTime)) Reset();
+}
+
+void CBulletObject::SetFirePosition(XMFLOAT3 xmf3FirePosition)
+{
+	m_xmf3FirePosition = xmf3FirePosition;
+	SetPosition(xmf3FirePosition);
+}
+
+void CBulletObject::Reset()
+{
+	m_pLockedObject = NULL;
+	m_fElapsedTimeAfterFire = 0;
+	m_fMovingDistance = 0;
+	m_fRotationAngle = 0.0f;
+
+	m_bActive = false;
+}
+//----------------------------------------------------------

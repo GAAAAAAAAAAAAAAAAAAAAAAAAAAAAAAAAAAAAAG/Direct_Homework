@@ -78,8 +78,9 @@ public:
 
 	int LoadTextureFromFile(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, CGameObject* pParent, FILE* pInFile, CShader* pShader, UINT nIndex);
 	//추가
-
 	void LoadTextureFromFile(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, wchar_t* pszFileName, UINT nResourceType, UINT nIndex);
+	void LoadTextureFromWICFile(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, wchar_t* pszFileName, UINT nResourceType, UINT nIndex);
+
 	//----
 
 
@@ -255,6 +256,7 @@ public:
 
 	UINT GetMeshType() { return((m_pMesh) ? m_pMesh->GetType() : 0x00); }
 
+	
 public:
 	void LoadMaterialsFromFile(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList, CGameObject *pParent, FILE *pInFile, CShader *pShader);
 
@@ -263,11 +265,76 @@ public:
 
 	static void PrintFrameInfo(CGameObject *pGameObject, CGameObject *pParent);
 
-	// [추가]---
 	void SetLookAt(XMFLOAT3& xmf3Target, XMFLOAT3& xmf3Up = XMFLOAT3(0.0f, 1.0f, 0.0f));
+	
+	// [추가] 총알하려고----------------------------
+	CShader* m_pShader = NULL;
 
+	XMFLOAT3					m_xmf3Color = XMFLOAT3(1.0f, 1.0f, 1.0f);
+	bool						m_bActive = true;
+	bool						isShield = false;
+	XMFLOAT3					m_xmf3RotationAxis = XMFLOAT3(0.0f, 0.0f, 0.0f);
+	float						m_fRotationSpeed = 0.0f;
+	XMFLOAT3					m_xmf3MovingDirection = XMFLOAT3(0.0f, 0.0f, 1.0f);
+	float						m_fMovingSpeed = 0.0f;
+	float						m_fMovingRange = 0.0f;
+	BoundingOrientedBox			m_xmOOBB = BoundingOrientedBox();
+	CGameObject* m_pObjectCollided = NULL;	//충돌된 게임오브젝트의 포인터를 저장
+	CPlayer* target;
+
+	void SetMesh(CMesh* pMesh);
+	void UpdateBoundingBox();
+
+	void Move(XMFLOAT3& vDirection, float fSpeed);
+
+	void SetMovingDirection(XMFLOAT3& xmf3MovingDirection) { m_xmf3MovingDirection = Vector3::Normalize(xmf3MovingDirection); }
+	void SetMovingSpeed(float fSpeed) { m_fMovingSpeed = fSpeed; }
+	void SetMovingRange(float fRange) { m_fMovingRange = fRange; }
+
+	void Rotate2(XMFLOAT3& xmf3Axis, float fAngle);
+	void SetRotationAxis(XMFLOAT3& xmf3RotationAxis) { m_xmf3RotationAxis = Vector3::Normalize(xmf3RotationAxis); }
+	void SetRotationSpeed(float fSpeed) { m_fRotationSpeed = fSpeed; }
+
+	void SetActive(bool bActive) { m_bActive = bActive; }
+
+	virtual void FireBullet() {};
+
+	// OBB를 반환하는 메서드 추가
+	const DirectX::BoundingOrientedBox& GetOBB() const { return m_pMesh->GetOBB(); }
+	
 };
+// 추가----------------------
+class CBulletObject : public CGameObject	//총알 오브젝트
+{
+public:
+	CBulletObject(float fEffectiveRange);
+	virtual ~CBulletObject();
 
+	//추가
+	bool						m_bBlowingUp = false;
+public:
+	virtual void Animate(float fElapsedTime);
+
+	float						m_fBulletEffectiveRange = 50.0f;
+	float						m_fMovingDistance = 0.0f;
+	float						m_fRotationAngle = 0.0f;
+	XMFLOAT3					m_xmf3FirePosition = XMFLOAT3(0.0f, 0.0f, 1.0f);
+
+	float						m_fElapsedTimeAfterFire = 0.0f;
+	float						m_fLockingDelayTime = 0.3f;
+	float						m_fLockingTime = 4.0f;
+	CGameObject* m_pLockedObject = NULL;
+
+	void SetFirePosition(XMFLOAT3 xmf3FirePosition);
+	void Reset();
+};
+#define BULLETS					50
+inline float RandF(float fMin, float fMax)
+{
+	return(fMin + ((float)rand() / (float)RAND_MAX) * (fMax - fMin));
+}
+
+//------------------------------------------------------------
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
 class CSuperCobraObject : public CGameObject
@@ -283,6 +350,16 @@ private:
 public:
 	virtual void PrepareAnimate();
 	virtual void Animate(float fTimeElapsed, XMFLOAT4X4 *pxmf4x4Parent = NULL);
+
+	// 추가----------------------------------
+	bool						live = true;
+	bool						isAnimatingEnd = false;
+	float						fBulletTimer = RandF(0.0f, 6.0f);
+	float						m_fBulletEffectiveRange = 150.0f;
+	CBulletObject* m_ppBullets_E[BULLETS];
+
+
+	void FireBullet() override;
 };
 
 class CGunshipObject : public CGameObject
@@ -298,9 +375,18 @@ private:
 public:
 	virtual void PrepareAnimate();
 	virtual void Animate(float fTimeElapsed, XMFLOAT4X4 *pxmf4x4Parent = NULL);
+	
+	// 추가
+	bool						live = true;
+	bool						isAnimatingEnd = false;
+	float						fBulletTimer = RandF(0.0f, 6.0f);
+	float						m_fBulletEffectiveRange = 150.0f;
+	CBulletObject* m_ppBullets_E[BULLETS];
+
+	void FireBullet() override;
 };
 
-class CMi24Object : public CGameObject
+class CMi24Object : public CGameObject	//주인공
 {
 public:
 	CMi24Object(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList, ID3D12RootSignature *pd3dGraphicsRootSignature);
@@ -313,6 +399,15 @@ private:
 public:
 	virtual void PrepareAnimate();
 	virtual void Animate(float fTimeElapsed, XMFLOAT4X4 *pxmf4x4Parent = NULL);
+
+	// 추가
+	bool						live = true;
+	bool						isAnimatingEnd = false;
+	float						fBulletTimer = RandF(0.0f, 6.0f);
+	float						m_fBulletEffectiveRange = 150.0f;
+	CBulletObject* m_ppBullets_E[BULLETS];
+
+	//void FireBullet() override;
 };
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

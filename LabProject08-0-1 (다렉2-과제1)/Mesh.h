@@ -26,6 +26,10 @@ class CMesh
 {
 public:
 	CMesh(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList);
+	//추가---
+	CMesh(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, char* pstrFileName, bool bTextFile);
+	//------
+	
 	virtual ~CMesh();
 
 private:
@@ -73,6 +77,29 @@ protected:
 	ID3D12Resource					*m_pd3dPositionUploadBuffer = NULL;
 	D3D12_VERTEX_BUFFER_VIEW		m_d3dPositionBufferView;
 
+	//추가-----------------
+	BoundingBox						m_xmBoundingBox;
+
+	XMFLOAT3* m_pxmf3Normals = NULL;
+	ID3D12Resource* m_pd3dNormalBuffer = NULL;
+	ID3D12Resource* m_pd3dNormalUploadBuffer = NULL;
+
+	XMFLOAT2* m_pxmf2TextureCoords = NULL;
+	ID3D12Resource* m_pd3dTextureCoordBuffer = NULL;
+	ID3D12Resource* m_pd3dTextureCoordUploadBuffer = NULL;
+
+
+	UINT* m_pnIndices = NULL;
+
+
+
+	XMFLOAT3* pVertices = NULL;
+
+
+	UINT							m_nVertexBufferViews = 0;
+	D3D12_VERTEX_BUFFER_VIEW		*m_pd3dVertexBufferViews = NULL;
+	//--------------------
+
 	int								m_nSubMeshes = 0;
 	int								*m_pnSubSetIndices = NULL;
 	UINT							**m_ppnSubSetIndices = NULL;
@@ -86,6 +113,13 @@ public:
 
 	virtual void ReleaseUploadBuffers();
 	virtual void Render(ID3D12GraphicsCommandList *pd3dCommandList, int nSubSet);
+
+	//추가
+	void CalculateOBB();
+	void LoadMeshFromFile(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, char* pstrFileName, bool bTextFile);
+
+	BoundingOrientedBox			m_xmOOBB = BoundingOrientedBox();
+	const DirectX::BoundingOrientedBox& GetOBB() const { return m_xmOOBB; }
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -320,5 +354,11 @@ public:
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//
-//이건 삭제해야하나 흠...
+// 추가
+class CScreenRectMeshTextured : public CMesh
+{
+public:
+	CScreenRectMeshTextured(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, float fxLeft = 0.0f, float fWidth = 2.0f, float fyTop = 0.0f, float fHeight = 2.0f);
+	virtual ~CScreenRectMeshTextured();
+};
+

@@ -9,6 +9,135 @@ CMesh::CMesh(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandLis
 {
 }
 
+//추가------------------------
+CMesh::CMesh(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, char* pstrFileName, bool bTextFile)
+{
+	if (pstrFileName) LoadMeshFromFile(pd3dDevice, pd3dCommandList, pstrFileName, bTextFile);
+}
+
+/////////추가
+void CMesh::CalculateOBB() {
+	if (m_nVertices > 0) {
+		BoundingOrientedBox::CreateFromPoints(
+			m_xmOOBB,
+			m_nVertices,
+			reinterpret_cast<const XMFLOAT3*>(m_pxmf3Positions),
+			sizeof(XMFLOAT3)
+		);
+	}
+}
+
+void CMesh::LoadMeshFromFile(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, char* pstrFileName, bool bTextFile)
+{
+	char pstrToken[64] = { '\0' };
+
+	if (bTextFile)
+	{
+		ifstream InFile(pstrFileName);
+
+		for (; ; )
+		{	// text 파일
+			InFile >> pstrToken;
+			if (!InFile) break;
+
+			if (!strcmp(pstrToken, "<Vertices>:"))
+			{
+				InFile >> m_nVertices;
+				m_pxmf3Positions = new XMFLOAT3[m_nVertices];
+				for (UINT i = 0; i < m_nVertices; i++) InFile >> m_pxmf3Positions[i].x >> m_pxmf3Positions[i].y >> m_pxmf3Positions[i].z;
+			}
+			else if (!strcmp(pstrToken, "<Normals>:"))
+			{
+				InFile >> pstrToken;
+				m_pxmf3Normals = new XMFLOAT3[m_nVertices];
+				for (UINT i = 0; i < m_nVertices; i++) InFile >> m_pxmf3Normals[i].x >> m_pxmf3Normals[i].y >> m_pxmf3Normals[i].z;
+			}
+			else if (!strcmp(pstrToken, "<TextureCoords>:"))
+			{
+				InFile >> pstrToken;
+				m_pxmf2TextureCoords = new XMFLOAT2[m_nVertices];
+				for (UINT i = 0; i < m_nVertices; i++) InFile >> m_pxmf2TextureCoords[i].x >> m_pxmf2TextureCoords[i].y;
+			}
+			else if (!strcmp(pstrToken, "<Indices>:"))
+			{
+				InFile >> m_nIndices;
+				m_pnIndices = new UINT[m_nIndices];
+				for (UINT i = 0; i < m_nIndices; i++) InFile >> m_pnIndices[i];
+			}
+		}
+		CalculateOBB();
+	}
+	else
+	{	// binary 파일 - 얘가 빠름
+		FILE* pFile = NULL;
+		::fopen_s(&pFile, pstrFileName, "rb");
+		::rewind(pFile);
+
+		char pstrToken[64] = { '\0' };
+
+		BYTE nStrLength = 0;
+		UINT nReads = 0;
+
+		nReads = (UINT)::fread(&nStrLength, sizeof(BYTE), 1, pFile);
+		nReads = (UINT)::fread(pstrToken, sizeof(char), 14, pFile); //"<BoundingBox>:" 바운딩박스를 읽음
+		nReads = (UINT)::fread(&m_xmBoundingBox.Center, sizeof(float), 3, pFile);
+		nReads = (UINT)::fread(&m_xmBoundingBox.Extents, sizeof(float), 3, pFile);
+
+		nReads = (UINT)::fread(&nStrLength, sizeof(BYTE), 1, pFile);
+		nReads = (UINT)::fread(pstrToken, sizeof(char), 11, pFile); //"<Vertices>:"
+		nReads = (UINT)::fread(&m_nVertices, sizeof(int), 1, pFile);
+		m_pxmf3Positions = new XMFLOAT3[m_nVertices];
+		nReads = (UINT)::fread(m_pxmf3Positions, sizeof(float), 3 * m_nVertices, pFile);
+
+		nReads = (UINT)::fread(&nStrLength, sizeof(BYTE), 1, pFile);
+		nReads = (UINT)::fread(pstrToken, sizeof(char), 10, pFile); //"<Normals>:"
+		nReads = (UINT)::fread(&m_nVertices, sizeof(int), 1, pFile);
+		m_pxmf3Normals = new XMFLOAT3[m_nVertices];
+		nReads = (UINT)::fread(m_pxmf3Normals, sizeof(float), 3 * m_nVertices, pFile);
+
+		nReads = (UINT)::fread(&nStrLength, sizeof(BYTE), 1, pFile);
+		nReads = (UINT)::fread(pstrToken, sizeof(char), 16, pFile); //"<TextureCoords>:"
+		nReads = (UINT)::fread(&m_nVertices, sizeof(int), 1, pFile);
+		m_pxmf2TextureCoords = new XMFLOAT2[m_nVertices];
+		nReads = (UINT)::fread(m_pxmf2TextureCoords, sizeof(float), 2 * m_nVertices, pFile);
+
+		nReads = (UINT)::fread(&nStrLength, sizeof(BYTE), 1, pFile);
+		nReads = (UINT)::fread(pstrToken, sizeof(char), 10, pFile); //"<Indices>:"
+		nReads = (UINT)::fread(&m_nIndices, sizeof(int), 1, pFile);
+		m_pnIndices = new UINT[m_nIndices];
+		nReads = (UINT)::fread(m_pnIndices, sizeof(UINT), m_nIndices, pFile);
+
+		CalculateOBB();
+		::fclose(pFile);
+	}
+
+	m_pd3dPositionBuffer = ::CreateBufferResource(pd3dDevice, pd3dCommandList, m_pxmf3Positions, sizeof(XMFLOAT3) * m_nVertices, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER, &m_pd3dPositionUploadBuffer);
+	m_pd3dNormalBuffer = ::CreateBufferResource(pd3dDevice, pd3dCommandList, m_pxmf3Normals, sizeof(XMFLOAT3) * m_nVertices, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER, &m_pd3dNormalUploadBuffer);
+	m_pd3dTextureCoordBuffer = ::CreateBufferResource(pd3dDevice, pd3dCommandList, m_pxmf2TextureCoords, sizeof(XMFLOAT2) * m_nVertices, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER, &m_pd3dTextureCoordUploadBuffer);
+
+	m_nVertexBufferViews = 3;
+	m_pd3dVertexBufferViews = new D3D12_VERTEX_BUFFER_VIEW[m_nVertexBufferViews];
+
+	m_pd3dVertexBufferViews[0].BufferLocation = m_pd3dPositionBuffer->GetGPUVirtualAddress();
+	m_pd3dVertexBufferViews[0].StrideInBytes = sizeof(XMFLOAT3);
+	m_pd3dVertexBufferViews[0].SizeInBytes = sizeof(XMFLOAT3) * m_nVertices;
+
+	m_pd3dVertexBufferViews[1].BufferLocation = m_pd3dNormalBuffer->GetGPUVirtualAddress();
+	m_pd3dVertexBufferViews[1].StrideInBytes = sizeof(XMFLOAT3);
+	m_pd3dVertexBufferViews[1].SizeInBytes = sizeof(XMFLOAT3) * m_nVertices;
+
+	m_pd3dVertexBufferViews[2].BufferLocation = m_pd3dTextureCoordBuffer->GetGPUVirtualAddress();
+	m_pd3dVertexBufferViews[2].StrideInBytes = sizeof(XMFLOAT2);
+	m_pd3dVertexBufferViews[2].SizeInBytes = sizeof(XMFLOAT2) * m_nVertices;
+
+	m_pd3dIndexBuffer = ::CreateBufferResource(pd3dDevice, pd3dCommandList, m_pnIndices, sizeof(UINT) * m_nIndices, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_INDEX_BUFFER, &m_pd3dIndexUploadBuffer);
+
+	m_d3dIndexBufferView.BufferLocation = m_pd3dIndexBuffer->GetGPUVirtualAddress();
+	m_d3dIndexBufferView.Format = DXGI_FORMAT_R32_UINT;
+	m_d3dIndexBufferView.SizeInBytes = sizeof(UINT) * m_nIndices;
+}
+//---------------------------
+
 CMesh::~CMesh()
 {
 	if (m_pd3dPositionBuffer) m_pd3dPositionBuffer->Release();
@@ -57,6 +186,15 @@ void CMesh::Render(ID3D12GraphicsCommandList *pd3dCommandList, int nSubSet)
 	pd3dCommandList->IASetPrimitiveTopology(m_d3dPrimitiveTopology);
 
 	pd3dCommandList->IASetVertexBuffers(m_nSlot, 1, &m_d3dPositionBufferView);
+
+	//추가-----
+	pd3dCommandList->IASetVertexBuffers(m_nSlot, m_nVertexBufferViews, m_pd3dVertexBufferViews);
+	if (m_pd3dIndexBuffer)	//인덱스버퍼가 있으면(지금은 모델그릴때 전부 인덱스버퍼가 있음)
+	{
+		pd3dCommandList->IASetIndexBuffer(&m_d3dIndexBufferView);
+		pd3dCommandList->DrawIndexedInstanced(m_nIndices, 1, 0, 0, 0);
+	}
+	//--------
 
 	if ((m_nSubMeshes > 0) && (nSubSet < m_nSubMeshes))
 	{
@@ -960,4 +1098,37 @@ void CHeightMapGridMesh::Render(ID3D12GraphicsCommandList* pd3dCommandList, int 
 	pd3dCommandList->DrawIndexedInstanced(m_nIndices, 1, 0, 0, 0);
 
 	//pd3dCommandList->DrawInstanced(m_nVertices, 1, m_nOffset, 0);
+}
+
+//추가
+//////////////////////////////////////////////////////////////////////////////////
+//
+CScreenRectMeshTextured::CScreenRectMeshTextured(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, float fxLeft, float fWidth, float fyTop, float fHeight) : CMesh(pd3dDevice, pd3dCommandList)
+{
+	m_nVertices = 6;
+	m_nStride = sizeof(CTexturedVertex);
+	m_nOffset = 0;
+	m_nSlot = 0;
+	m_d3dPrimitiveTopology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+
+	CTexturedVertex pVertices[6];
+	int i = 0;
+
+	pVertices[i++] = CTexturedVertex(XMFLOAT3(fxLeft, fyTop, 0.0f), XMFLOAT2(0.0f, 0.0f));
+	pVertices[i++] = CTexturedVertex(XMFLOAT3(fxLeft + fWidth, fyTop, 0.0f), XMFLOAT2(1.0f, 0.0f));
+	pVertices[i++] = CTexturedVertex(XMFLOAT3(fxLeft + fWidth, fyTop - fHeight, 0.0f), XMFLOAT2(1.0f, 1.0f));
+
+	pVertices[i++] = CTexturedVertex(XMFLOAT3(fxLeft, fyTop, 0.0f), XMFLOAT2(0.0f, 0.0f));
+	pVertices[i++] = CTexturedVertex(XMFLOAT3(fxLeft + fWidth, fyTop - fHeight, 0.0f), XMFLOAT2(1.0f, 1.0f));
+	pVertices[i++] = CTexturedVertex(XMFLOAT3(fxLeft, fyTop - fHeight, 0.0f), XMFLOAT2(0.0f, 1.0f));
+
+	m_pd3dVertexBuffer = CreateBufferResource(pd3dDevice, pd3dCommandList, pVertices, m_nStride * m_nVertices, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER, &m_pd3dVertexUploadBuffer);
+
+	m_d3dVertexBufferView.BufferLocation = m_pd3dVertexBuffer->GetGPUVirtualAddress();
+	m_d3dVertexBufferView.StrideInBytes = m_nStride;
+	m_d3dVertexBufferView.SizeInBytes = m_nStride * m_nVertices;
+}
+
+CScreenRectMeshTextured::~CScreenRectMeshTextured()
+{
 }

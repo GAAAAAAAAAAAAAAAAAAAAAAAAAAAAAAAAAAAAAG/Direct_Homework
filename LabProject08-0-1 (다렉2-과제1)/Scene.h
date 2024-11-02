@@ -80,8 +80,9 @@ public:
 	virtual void ReleaseShaderVariables();
 
 	void BuildDefaultLightsAndMaterials();
-	void BuildObjects(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList);
+	virtual void BuildObjects(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList);
 	void ReleaseObjects();
+	// ㄴvirtual 키워드 사용
 
 	ID3D12RootSignature *CreateGraphicsRootSignature(ID3D12Device *pd3dDevice);
 	ID3D12RootSignature *GetGraphicsRootSignature() { return(m_pd3dGraphicsRootSignature); }
@@ -91,6 +92,13 @@ public:
     void Render(ID3D12GraphicsCommandList *pd3dCommandList, CCamera *pCamera=NULL);
 
 	void ReleaseUploadBuffers();
+
+	//-----추가---------
+	void CheckObjectByObjectCollisions();
+	void CheckObjectByBulletCollisions();
+	void CheckShieldByBulletCollisions();
+	void CheckPlayerByBulletCollisions();
+	//------------------
 
 	CPlayer								*m_pPlayer = NULL;
 
@@ -115,15 +123,17 @@ public:
 
 	// 추가---
 	CHeightMapTerrain					*m_pTerrain = NULL;
-	//--------
 
 	float								m_currentTime = 0.0f;
 	float								m_ElapsedTime = 0.0f;
+	//--------
+
 public:
 	static CDescriptorHeap*				m_pDescriptorHeap;
 
 	//추가---
 	CHeightMapTerrain* GetTerrain() { return(m_pTerrain); }
+
 	//------
 
 	static void CreateCbvSrvDescriptorHeaps(ID3D12Device* pd3dDevice, int nConstantBufferViews, int nShaderResourceViews);
@@ -142,4 +152,19 @@ public:
 	static D3D12_GPU_DESCRIPTOR_HANDLE GetGPUCbvDescriptorNextHandle() { return(m_pDescriptorHeap->m_d3dSrvGPUDescriptorNextHandle); }
 	static D3D12_CPU_DESCRIPTOR_HANDLE GetCPUSrvDescriptorStartHandle() { return(m_pDescriptorHeap->m_d3dSrvCPUDescriptorStartHandle); }
 	static D3D12_GPU_DESCRIPTOR_HANDLE GetGPUSrvDescriptorStartHandle() { return(m_pDescriptorHeap->m_d3dSrvGPUDescriptorStartHandle); }
+};
+
+class StartScene : public CScene
+{
+public:
+	StartScene(CPlayer* pPlayer);  // 생성자 선언
+	StartScene();  // 생성자 선언
+	virtual ~StartScene() {}
+
+public:
+	virtual void BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList);
+	//virtual void ReleaseObjects();
+	//virtual void SetPlayer(CPlayer* pPlayer);
+	//virtual void Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera = NULL);
+
 };

@@ -81,6 +81,11 @@ public:
 	virtual CCamera *ChangeCamera(DWORD nNewCameraMode, float fTimeElapsed) { return(NULL); }
 	virtual void OnPrepareRender();
 	virtual void Render(ID3D12GraphicsCommandList *pd3dCommandList, CCamera *pCamera = NULL);
+
+	// 추가 -------------------------------------------
+	float						collisionTime = 0.0f;
+	bool						isCollision = false;
+	bool						Zpush = false;
 };
 
 class CAirplanePlayer : public CPlayer
@@ -99,6 +104,14 @@ private:
 public:
 	virtual CCamera *ChangeCamera(DWORD nNewCameraMode, float fTimeElapsed);
 	virtual void OnPrepareRender();
+
+	//시도
+	float						m_fBulletEffectiveRange = 150.0f;
+	CBulletObject* m_ppBullets[BULLETS];
+
+	void FireBullet(CGameObject* pLockedObject);
+
+	virtual void Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera);
 };
 
 //class CTerrainPlayer : public CPlayer

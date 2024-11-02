@@ -2,12 +2,12 @@
 <Project>
   <ProjectOutputs>
     <ProjectOutput>
-      <FullPath>C:\direct2\x64\Debug\LabProject08-0-1.exe</FullPath>
+      <FullPath>D:\direct\x64\Debug\LabProject08-0-1.exe</FullPath>
     </ProjectOutput>
   </ProjectOutputs>
   <ContentFiles>
     <ContentFile>
-      <FullPath>C:\direct2\x64\Debug\Shaders.cso</FullPath>
+      <FullPath>D:\direct\x64\Debug\Shaders.cso</FullPath>
     </ContentFile>
   </ContentFiles>
   <SatelliteDlls />

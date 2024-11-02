@@ -25,6 +25,10 @@
 
 using namespace std;
 
+//추가
+#include <random>
+//------
+
 #include <d3d12.h>
 #include <dxgi1_4.h>
 #include <D3Dcompiler.h>
@@ -294,3 +298,10 @@ namespace Plane
 		return(xmf4Result);
 	}
 }
+
+// 추가
+// xmf 관련 연산자 오버로딩
+inline XMFLOAT3 operator+(XMFLOAT3& lhs, XMFLOAT3& rhs) { return Vector3::Add(lhs, rhs); }
+inline XMFLOAT3 operator-(XMFLOAT3& lhs, XMFLOAT3& rhs) { return Vector3::Add(lhs, rhs, -1); }
+inline XMFLOAT3 operator*(XMFLOAT3& lhs, float& rhs) { return Vector3::ScalarProduct(lhs, rhs, false); }
+inline XMFLOAT4X4 operator*(XMFLOAT4X4& lhs, XMFLOAT4X4& rhs) { return Matrix4x4::Multiply(lhs, rhs); }

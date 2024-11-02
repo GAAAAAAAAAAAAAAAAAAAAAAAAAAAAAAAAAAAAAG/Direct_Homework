@@ -247,6 +247,7 @@ void CScene::ReleaseObjects()
 	if (m_pd3dGraphicsRootSignature) m_pd3dGraphicsRootSignature->Release();
 	if (m_pDescriptorHeap) delete m_pDescriptorHeap;
 
+
 	if (m_ppShaders)
 	{
 		for (int i = 0; i < m_nShaders; i++)
@@ -387,7 +388,7 @@ ID3D12RootSignature *CScene::CreateGraphicsRootSignature(ID3D12Device *pd3dDevic
 	pd3dRootParameters[10].DescriptorTable.pDescriptorRanges = &(pd3dDescriptorRanges[7]);
 	pd3dRootParameters[10].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 #else
-	D3D12_DESCRIPTOR_RANGE pd3dDescriptorRanges[4];
+	D3D12_DESCRIPTOR_RANGE pd3dDescriptorRanges[5];
 
 	pd3dDescriptorRanges[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
 	pd3dDescriptorRanges[0].NumDescriptors = 7;
@@ -413,7 +414,13 @@ ID3D12RootSignature *CScene::CreateGraphicsRootSignature(ID3D12Device *pd3dDevic
 	pd3dDescriptorRanges[3].RegisterSpace = 0;
 	pd3dDescriptorRanges[3].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
-	D3D12_ROOT_PARAMETER pd3dRootParameters[8];
+	pd3dDescriptorRanges[4].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+	pd3dDescriptorRanges[4].NumDescriptors = 1;
+	pd3dDescriptorRanges[4].BaseShaderRegister = 18; //t18: gtxtTexture
+	pd3dDescriptorRanges[4].RegisterSpace = 0;
+	pd3dDescriptorRanges[4].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+
+	D3D12_ROOT_PARAMETER pd3dRootParameters[9];
 
 	pd3dRootParameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
 	pd3dRootParameters[0].Descriptor.ShaderRegister = 1; //Camera
@@ -456,6 +463,11 @@ ID3D12RootSignature *CScene::CreateGraphicsRootSignature(ID3D12Device *pd3dDevic
 	pd3dRootParameters[7].Constants.ShaderRegister = 3;
 	pd3dRootParameters[7].Constants.RegisterSpace = 0;
 	pd3dRootParameters[7].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+
+	pd3dRootParameters[8].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;	// texture
+	pd3dRootParameters[8].DescriptorTable.NumDescriptorRanges = 1;
+	pd3dRootParameters[8].DescriptorTable.pDescriptorRanges = &(pd3dDescriptorRanges[4]);
+	pd3dRootParameters[8].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 #endif
 
 	D3D12_STATIC_SAMPLER_DESC pd3dSamplerDescs[2];
@@ -578,6 +590,10 @@ bool CScene::ProcessInput(UCHAR *pKeysBuffer)
 	return(false);
 }
 
+//추가-----------------
+
+//--------------------
+
 void CScene::AnimateObjects(float fTimeElapsed)
 {
 	m_currentTime += fTimeElapsed;
@@ -612,15 +628,93 @@ void CScene::Render(ID3D12GraphicsCommandList *pd3dCommandList, CCamera *pCamera
 
 	if (m_pSkyBox) m_pSkyBox->Render(pd3dCommandList, pCamera);
 
-	//추가---
+	//추가--------------
+	//터레인
 	if (m_pTerrain)
 	{
 		int i;
 		m_pTerrain->Render(pd3dCommandList, pCamera);
 	}
-	//------
+
+	// 총알
+	CBulletObject* pBulletObject = NULL;
+	for (int j = 0; j < m_nGameObjects; j++)
+	{
+		CGunshipObject* exp = (CGunshipObject*)m_ppGameObjects[j];
+
+		for (int i = 0; i < BULLETS; i++)
+		{
+			if (!exp->m_ppBullets_E[i]->m_bActive)
+			{
+				pBulletObject = exp->m_ppBullets_E[i];
+				pBulletObject->SetMovingDirection(Vector3::Subtract(m_pPlayer->GetPosition(), pBulletObject->m_xmf3FirePosition));
+				break;
+			}
+		}
+	}
+	pBulletObject = NULL;
+	for (int j = 0; j < m_nGameObjects; j++)
+	{
+		CSuperCobraObject* exp = (CSuperCobraObject*)m_ppGameObjects[j];
+
+		for (int i = 0; i < BULLETS; i++)
+		{
+			if (!exp->m_ppBullets_E[i]->m_bActive)
+			{
+				pBulletObject = exp->m_ppBullets_E[i];
+				pBulletObject->SetMovingDirection(Vector3::Subtract(m_pPlayer->GetPosition(), pBulletObject->m_xmf3FirePosition));
+				break;
+			}
+		}
+	}
+	//-------------------
 	
 	for (int i = 0; i < m_nGameObjects; i++) if (m_ppGameObjects[i]) m_ppGameObjects[i]->Render(pd3dCommandList, pCamera);
 	
-	for (int i = 1; i < m_nShaders; i++) if (m_ppShaders[i]) m_ppShaders[i]->Render(pd3dCommandList, pCamera);
+	for (int i = 0; i < m_nShaders; i++) if (m_ppShaders[i]) m_ppShaders[i]->Render(pd3dCommandList, pCamera);
+}
+
+//추가-----------------------------------------
+// 시도 -----------------------------------------------------------------------
+StartScene::StartScene(CPlayer* pPlayer) : CScene() {
+	// 필요한 초기화 코드
+
+}
+StartScene::StartScene() : CScene() {
+	// 필요한 초기화 코드
+
+}
+
+void StartScene::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList)
+{
+	m_pd3dGraphicsRootSignature = CreateGraphicsRootSignature(pd3dDevice);
+
+	m_nShaders = 1;
+	m_ppShaders = new CShader * [m_nShaders];
+
+	CTextureToScreenShader* pTextureToScreenShader = new CTextureToScreenShader(3);
+	pTextureToScreenShader->CreateShader(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature);
+
+	CTexture* pTexture = new CTexture(3, RESOURCE_TEXTURE2D, 0, 1);
+	pTexture->LoadTextureFromDDSFile(pd3dDevice, pd3dCommandList, L"Image/Stone01.dds", RESOURCE_TEXTURE2D, 0);
+	pTexture->LoadTextureFromWICFile(pd3dDevice, pd3dCommandList, L"Image/Wood.jpg", RESOURCE_TEXTURE2D, 1);
+	pTexture->LoadTextureFromWICFile(pd3dDevice, pd3dCommandList, L"Image/Stone01.jpg", RESOURCE_TEXTURE2D, 2);
+
+	//추가--
+	m_pDescriptorHeap = new CDescriptorHeap();
+	//-----
+	CreateCbvSrvDescriptorHeaps(pd3dDevice, 1, 3);
+	CreateShaderResourceViews(pd3dDevice, pTexture, 0, 2);
+
+	CScreenRectMeshTextured* pMesh = new CScreenRectMeshTextured(pd3dDevice, pd3dCommandList, -1.0f, 2.0f, 1.0f, 2.0f);
+	pTextureToScreenShader->SetMesh(0, pMesh);
+	pMesh = new CScreenRectMeshTextured(pd3dDevice, pd3dCommandList, -0.5f, 1.0f, 0.5f, 1.0f);
+	pTextureToScreenShader->SetMesh(1, pMesh);
+	pMesh = new CScreenRectMeshTextured(pd3dDevice, pd3dCommandList, 0.5f, 0.4f, 0.9f, 0.3f);
+	pTextureToScreenShader->SetMesh(2, pMesh);
+
+	pTextureToScreenShader->SetTexture(pTexture);
+	m_ppShaders[0] = pTextureToScreenShader;
+
+	CreateShaderVariables(pd3dDevice, pd3dCommandList);
 }

@@ -1,4 +1,7 @@
-﻿C:\Users\??????\Desktop\Direct\LabProjects\LabProjects\LabProject08-0-1 (??��2-����1)\Shaders.hlsl(261,11-62): warning X3206: implicit truncation of vector type
-  
-  compilation object save succeeded; see C:\direct2\x64\Release\Shaders.cso
-  LabProject08-0-1.vcxproj -> C:\direct2\x64\Release\LabProject08-0-1.exe
+﻿  GameFramework.cpp
+  코드를 생성하고 있습니다.
+  6 of 892 functions ( 0.7%) were compiled, the rest were copied from previous compilation.
+    0 functions were new in current compilation
+    8 functions had inline decision re-evaluated but remain unchanged
+  코드를 생성했습니다.
+  LabProject08-0-1.vcxproj -> D:\direct\x64\Release\LabProject08-0-1.exe

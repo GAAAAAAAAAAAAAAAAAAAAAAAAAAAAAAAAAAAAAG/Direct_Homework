@@ -330,3 +330,53 @@ float4 PSBillboard(VS_TEXTURED_OUTPUT input) : SV_TARGET
 
     return (cColor);
 }
+
+//Ãß°¡---------------------------------------------------
+Texture2D gtxtTexture : register(t18);
+SamplerState gSamplerState : register(s2);
+
+struct VS_TEXTURED_INPUT2
+{
+    float3 position : POSITION;
+    float2 uv : TEXCOORD;
+};
+
+struct VS_TEXTURED_OUTPUT2
+{
+    float4 position : SV_POSITION;
+    float2 uv : TEXCOORD;
+};
+
+VS_TEXTURED_OUTPUT2 VSTextureToScreen(VS_TEXTURED_INPUT2 input)
+{
+    VS_TEXTURED_OUTPUT2 output;
+
+    output.position = float4(input.position, 1.0f);
+    output.uv = input.uv;
+
+    return (output);
+}
+
+/*
+VS_TEXTURED_OUTPUT VSTextureToScreen(uint nVertexID : SV_VertexID)
+{
+	VS_TEXTURED_OUTPUT output;
+	if (nVertexID == 0) { output.position = float4(-1.0f, +1.0f, 0.0f, 1.0f); output.uv = float2(0.0f, 0.0f); }
+	if (nVertexID == 1) { output.position = float4(+1.0f, +1.0f, 0.0f, 1.0f); output.uv = float2(1.0f, 0.0f); }
+	if (nVertexID == 2) { output.position = float4(+1.0f, -1.0f, 0.0f, 1.0f); output.uv = float2(1.0f, 1.0f); }
+	if (nVertexID == 3) { output.position = float4(-1.0f, +1.0f, 0.0f, 1.0f); output.uv = float2(0.0f, 0.0f); }
+	if (nVertexID == 4) { output.position = float4(+1.0f, -1.0f, 0.0f, 1.0f); output.uv = float2(1.0f, 1.0f); }
+	if (nVertexID == 5) { output.position = float4(-1.0f, -1.0f, 0.0f, 1.0f); output.uv = float2(0.0f, 1.0f); }
+
+	return(output);
+}
+*/
+
+float4 PSTextureToScreen(VS_TEXTURED_OUTPUT2 input) : SV_TARGET
+{
+    float4 cColor = gtxtTexture.Sample(gSamplerState, input.uv);
+
+//    if ((cColor.r > 0.85f) && (cColor.g > 0.85f) && (cColor.b > 0.85f)) discard;
+	
+    return (cColor);
+}
