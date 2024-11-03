@@ -187,13 +187,13 @@ void CMesh::Render(ID3D12GraphicsCommandList *pd3dCommandList, int nSubSet)
 
 	pd3dCommandList->IASetVertexBuffers(m_nSlot, 1, &m_d3dPositionBufferView);
 
-	//추가-----
-	pd3dCommandList->IASetVertexBuffers(m_nSlot, m_nVertexBufferViews, m_pd3dVertexBufferViews);
-	if (m_pd3dIndexBuffer)	//인덱스버퍼가 있으면(지금은 모델그릴때 전부 인덱스버퍼가 있음)
-	{
-		pd3dCommandList->IASetIndexBuffer(&m_d3dIndexBufferView);
-		pd3dCommandList->DrawIndexedInstanced(m_nIndices, 1, 0, 0, 0);
-	}
+	////추가-----
+	//pd3dCommandList->IASetVertexBuffers(m_nSlot, m_nVertexBufferViews, m_pd3dVertexBufferViews);
+	//if (m_pd3dIndexBuffer)	//인덱스버퍼가 있으면(지금은 모델그릴때 전부 인덱스버퍼가 있음)
+	//{
+	//	pd3dCommandList->IASetIndexBuffer(&m_d3dIndexBufferView);
+	//	pd3dCommandList->DrawIndexedInstanced(m_nIndices, 1, 0, 0, 0);
+	//}
 	//--------
 
 	if ((m_nSubMeshes > 0) && (nSubSet < m_nSubMeshes))
@@ -1122,11 +1122,11 @@ CScreenRectMeshTextured::CScreenRectMeshTextured(ID3D12Device* pd3dDevice, ID3D1
 	pVertices[i++] = CTexturedVertex(XMFLOAT3(fxLeft + fWidth, fyTop - fHeight, 0.0f), XMFLOAT2(1.0f, 1.0f));
 	pVertices[i++] = CTexturedVertex(XMFLOAT3(fxLeft, fyTop - fHeight, 0.0f), XMFLOAT2(0.0f, 1.0f));
 
-	m_pd3dVertexBuffer = CreateBufferResource(pd3dDevice, pd3dCommandList, pVertices, m_nStride * m_nVertices, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER, &m_pd3dVertexUploadBuffer);
+	m_pd3dPositionBuffer = CreateBufferResource(pd3dDevice, pd3dCommandList, pVertices, m_nStride * m_nVertices, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER, &m_pd3dVertexUploadBuffer);
 
-	m_d3dVertexBufferView.BufferLocation = m_pd3dVertexBuffer->GetGPUVirtualAddress();
-	m_d3dVertexBufferView.StrideInBytes = m_nStride;
-	m_d3dVertexBufferView.SizeInBytes = m_nStride * m_nVertices;
+	m_d3dPositionBufferView.BufferLocation = m_pd3dPositionBuffer->GetGPUVirtualAddress();
+	m_d3dPositionBufferView.StrideInBytes = m_nStride;
+	m_d3dPositionBufferView.SizeInBytes = m_nStride * m_nVertices;
 }
 
 CScreenRectMeshTextured::~CScreenRectMeshTextured()

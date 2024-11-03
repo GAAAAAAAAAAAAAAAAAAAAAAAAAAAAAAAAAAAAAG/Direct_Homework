@@ -190,14 +190,17 @@ void CScene::BuildDefaultLightsAndMaterials()
 void CScene::BuildObjects(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList)
 {
 	m_pd3dGraphicsRootSignature = CreateGraphicsRootSignature(pd3dDevice);
-
-
 	
 	//-------
-
-	m_pDescriptorHeap = new CDescriptorHeap();
-	CreateCbvSrvDescriptorHeaps(pd3dDevice, 0, 17+50+1+1+1); //SuperCobra(17), Gunship(?), Player:Mi24(1), Skybox(1), + 추가 terrain(1)
+	//m_pDescriptorHeap = new CDescriptorHeap();
+	//CreateCbvSrvDescriptorHeaps(pd3dDevice, 0, 17+50+1+1+1); //SuperCobra(17), Gunship(?), Player:Mi24(1), Skybox(1), + 추가 terrain(1)
 	//ㄴ 수정
+
+	if (m_pDescriptorHeap == nullptr)
+	{
+		m_pDescriptorHeap = new CDescriptorHeap();
+		CreateCbvSrvDescriptorHeaps(pd3dDevice, 1, 100);
+	}
 
 	BuildDefaultLightsAndMaterials();
 
@@ -245,7 +248,6 @@ void CScene::BuildObjects(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *p
 void CScene::ReleaseObjects()
 {
 	if (m_pd3dGraphicsRootSignature) m_pd3dGraphicsRootSignature->Release();
-	if (m_pDescriptorHeap) delete m_pDescriptorHeap;
 
 
 	if (m_ppShaders)
@@ -273,6 +275,14 @@ void CScene::ReleaseObjects()
 
 	// 추가
 	if (m_pTerrain) delete m_pTerrain;
+}
+
+void CScene::ReleaseCbvSrvUavDescriptorHeap(int num)
+{
+	if (num)
+		return;
+
+	if (m_pDescriptorHeap) delete m_pDescriptorHeap;
 }
 
 ID3D12RootSignature *CScene::CreateGraphicsRootSignature(ID3D12Device *pd3dDevice)
@@ -459,7 +469,7 @@ ID3D12RootSignature *CScene::CreateGraphicsRootSignature(ID3D12Device *pd3dDevic
 	pd3dRootParameters[6].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
 	pd3dRootParameters[7].ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;	//b3
-	pd3dRootParameters[7].Constants.Num32BitValues = 2;
+	pd3dRootParameters[7].Constants.Num32BitValues = 3;
 	pd3dRootParameters[7].Constants.ShaderRegister = 3;
 	pd3dRootParameters[7].Constants.RegisterSpace = 0;
 	pd3dRootParameters[7].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
@@ -533,6 +543,7 @@ void CScene::UpdateShaderVariables(ID3D12GraphicsCommandList *pd3dCommandList)
 
 	pd3dCommandList->SetGraphicsRoot32BitConstants(7, 1, &m_currentTime, 0);
 	pd3dCommandList->SetGraphicsRoot32BitConstants(7, 1, &m_ElapsedTime, 1);
+	pd3dCommandList->SetGraphicsRoot32BitConstants(7, 1, &gfWheel, 2);
 
 }
 
@@ -569,12 +580,12 @@ bool CScene::OnProcessingKeyboardMessage(HWND hWnd, UINT nMessageID, WPARAM wPar
 	case WM_KEYDOWN:
 		switch (wParam)
 		{
-		case 'W': m_ppGameObjects[0]->MoveForward(+1.0f); break;
+		/*case 'W': m_ppGameObjects[0]->MoveForward(+1.0f); break;
 		case 'S': m_ppGameObjects[0]->MoveForward(-1.0f); break;
 		case 'A': m_ppGameObjects[0]->MoveStrafe(-1.0f); break;
 		case 'D': m_ppGameObjects[0]->MoveStrafe(+1.0f); break;
 		case 'Q': m_ppGameObjects[0]->MoveUp(+1.0f); break;
-		case 'R': m_ppGameObjects[0]->MoveUp(-1.0f); break;
+		case 'R': m_ppGameObjects[0]->MoveUp(-1.0f); break;*/
 		default:
 			break;
 		}
@@ -620,8 +631,6 @@ void CScene::Render(ID3D12GraphicsCommandList *pd3dCommandList, CCamera *pCamera
 	pCamera->UpdateShaderVariables(pd3dCommandList);
 
 	UpdateShaderVariables(pd3dCommandList);
-
-
 
 	D3D12_GPU_VIRTUAL_ADDRESS d3dcbLightsGpuVirtualAddress = m_pd3dcbLights->GetGPUVirtualAddress();
 	pd3dCommandList->SetGraphicsRootConstantBufferView(2, d3dcbLightsGpuVirtualAddress); //Lights
@@ -692,29 +701,46 @@ void StartScene::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandLis
 	m_nShaders = 1;
 	m_ppShaders = new CShader * [m_nShaders];
 
-	CTextureToScreenShader* pTextureToScreenShader = new CTextureToScreenShader(3);
+	CTextureToScreenShader* pTextureToScreenShader = new CTextureToScreenShader(1);
 	pTextureToScreenShader->CreateShader(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature);
 
-	CTexture* pTexture = new CTexture(3, RESOURCE_TEXTURE2D, 0, 1);
-	pTexture->LoadTextureFromDDSFile(pd3dDevice, pd3dCommandList, L"Image/Stone01.dds", RESOURCE_TEXTURE2D, 0);
-	pTexture->LoadTextureFromWICFile(pd3dDevice, pd3dCommandList, L"Image/Wood.jpg", RESOURCE_TEXTURE2D, 1);
-	pTexture->LoadTextureFromWICFile(pd3dDevice, pd3dCommandList, L"Image/Stone01.jpg", RESOURCE_TEXTURE2D, 2);
+	CTexture* pTexture = new CTexture(1, RESOURCE_TEXTURE2D, 0, 1);
+	//pTexture->LoadTextureFromDDSFile(pd3dDevice, pd3dCommandList, L"Image/Stone01.dds", RESOURCE_TEXTURE2D, 0);
+	pTexture->LoadTextureFromWICFile(pd3dDevice, pd3dCommandList, L"Image/start.jpg", RESOURCE_TEXTURE2D, 0);
+	//pTexture->LoadTextureFromWICFile(pd3dDevice, pd3dCommandList, L"Image/Wood.jpg", RESOURCE_TEXTURE2D, 1);
+	//pTexture->LoadTextureFromWICFile(pd3dDevice, pd3dCommandList, L"Image/Stone01.jpg", RESOURCE_TEXTURE2D, 2);
 
 	//추가--
-	m_pDescriptorHeap = new CDescriptorHeap();
+	if (m_pDescriptorHeap == nullptr)
+	{
+		m_pDescriptorHeap = new CDescriptorHeap();
+		CreateCbvSrvDescriptorHeaps(pd3dDevice, 1, 100);
+	}
 	//-----
-	CreateCbvSrvDescriptorHeaps(pd3dDevice, 1, 3);
-	CreateShaderResourceViews(pd3dDevice, pTexture, 0, 2);
+	CreateShaderResourceViews(pd3dDevice, pTexture, 0, 8);
 
 	CScreenRectMeshTextured* pMesh = new CScreenRectMeshTextured(pd3dDevice, pd3dCommandList, -1.0f, 2.0f, 1.0f, 2.0f);
 	pTextureToScreenShader->SetMesh(0, pMesh);
 	pMesh = new CScreenRectMeshTextured(pd3dDevice, pd3dCommandList, -0.5f, 1.0f, 0.5f, 1.0f);
-	pTextureToScreenShader->SetMesh(1, pMesh);
-	pMesh = new CScreenRectMeshTextured(pd3dDevice, pd3dCommandList, 0.5f, 0.4f, 0.9f, 0.3f);
-	pTextureToScreenShader->SetMesh(2, pMesh);
+	//pTextureToScreenShader->SetMesh(1, pMesh);
+	//pMesh = new CScreenRectMeshTextured(pd3dDevice, pd3dCommandList, 0.5f, 0.4f, 0.9f, 0.3f);
+	//pTextureToScreenShader->SetMesh(2, pMesh);
 
 	pTextureToScreenShader->SetTexture(pTexture);
 	m_ppShaders[0] = pTextureToScreenShader;
 
 	CreateShaderVariables(pd3dDevice, pd3dCommandList);
+}
+
+void StartScene::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera)
+{
+	if (m_pd3dGraphicsRootSignature) pd3dCommandList->SetGraphicsRootSignature(m_pd3dGraphicsRootSignature);
+	pd3dCommandList->SetDescriptorHeaps(1, &m_pDescriptorHeap->m_pd3dCbvSrvDescriptorHeap);
+
+	pCamera->SetViewportsAndScissorRects(pd3dCommandList);
+	pCamera->UpdateShaderVariables(pd3dCommandList);
+
+	UpdateShaderVariables(pd3dCommandList);
+
+	for (int i = 0; i < m_nShaders; i++) if (m_ppShaders[i]) m_ppShaders[i]->Render(pd3dCommandList, pCamera);
 }

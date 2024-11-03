@@ -954,18 +954,21 @@ D3D12_DEPTH_STENCIL_DESC CTextureToScreenShader::CreateDepthStencilState()
 	return(d3dDepthStencilDesc);
 }
 
-D3D12_SHADER_BYTECODE CTextureToScreenShader::CreateVertexShader(ID3DBlob** ppd3dShaderBlob)
+D3D12_SHADER_BYTECODE CTextureToScreenShader::CreateVertexShader()
 {
-	return(CShader::CompileShaderFromFile(L"Shaders.hlsl", "VSTextureToScreen", "vs_5_1", ppd3dShaderBlob));
+	return(CShader::CompileShaderFromFile(L"Shaders.hlsl", "VSTextureToScreen", "vs_5_1", &m_pd3dVertexShaderBlob));
 }
 
-D3D12_SHADER_BYTECODE CTextureToScreenShader::CreatePixelShader(ID3DBlob** ppd3dShaderBlob)
+D3D12_SHADER_BYTECODE CTextureToScreenShader::CreatePixelShader()
 {
-	return(CShader::CompileShaderFromFile(L"Shaders.hlsl", "PSTextureToScreen", "ps_5_1", ppd3dShaderBlob));
+	return(CShader::CompileShaderFromFile(L"Shaders.hlsl", "PSTextureToScreen", "ps_5_1", &m_pd3dPixelShaderBlob));
 }
 
 void CTextureToScreenShader::CreateShader(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* pd3dGraphicsRootSignature)
 {
+	m_nPipelineStates = 1;
+	m_ppd3dPipelineStates = new ID3D12PipelineState * [m_nPipelineStates];
+
 	CShader::CreateShader(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature);
 
 	CreateShaderVariables(pd3dDevice, pd3dCommandList);
@@ -981,7 +984,7 @@ void CTextureToScreenShader::ReleaseUploadBuffers()
 	if (m_pTexture) m_pTexture->ReleaseUploadBuffers();
 }
 
-void CTextureToScreenShader::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera)
+void CTextureToScreenShader::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera, int nPipelineState)
 {
 	CShader::Render(pd3dCommandList, pCamera);
 
@@ -990,4 +993,34 @@ void CTextureToScreenShader::Render(ID3D12GraphicsCommandList* pd3dCommandList, 
 		if (m_pTexture) m_pTexture->UpdateShaderVariable(pd3dCommandList, 0, i);
 		if (m_ppMeshes[i]) m_ppMeshes[i]->Render(pd3dCommandList,0);
 	}
+}
+
+//Ãß°¡------------------------------------------------------------
+CScrollMenuShader::CScrollMenuShader(int nMeshes)
+{
+	m_nMeshes = nMeshes;
+	m_ppMeshes = new CMesh * [m_nMeshes];
+	for (int i = 0; i < m_nMeshes; i++) m_ppMeshes[i] = NULL;
+}
+
+
+CScrollMenuShader::~CScrollMenuShader()
+{
+	for (int i = 0; i < m_nMeshes; i++)
+	{
+		if (m_ppMeshes[i]) m_ppMeshes[i]->Release();
+	}
+	if (m_ppMeshes) delete[] m_ppMeshes;
+
+	if (m_pTexture) m_pTexture->Release();
+}
+
+D3D12_SHADER_BYTECODE CScrollMenuShader::CreateVertexShader()
+{
+	return(CShader::CompileShaderFromFile(L"Shaders.hlsl", "VSScrollTexture", "vs_5_1", &m_pd3dVertexShaderBlob));
+}
+
+D3D12_SHADER_BYTECODE CScrollMenuShader::CreatePixelShader()
+{
+	return(CShader::CompileShaderFromFile(L"Shaders.hlsl", "PSScrollTexture", "ps_5_1", &m_pd3dPixelShaderBlob));
 }

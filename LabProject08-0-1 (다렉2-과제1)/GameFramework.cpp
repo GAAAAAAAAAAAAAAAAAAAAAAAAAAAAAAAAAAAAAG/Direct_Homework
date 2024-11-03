@@ -31,7 +31,8 @@ CGameFramework::CGameFramework()
 	m_nWndClientWidth = FRAME_BUFFER_WIDTH;
 	m_nWndClientHeight = FRAME_BUFFER_HEIGHT;
 
-	m_pScene = NULL;
+	m_pScene[0] = NULL;
+	m_pScene[1] = NULL;
 	m_pPlayer = NULL;
 
 	_tcscpy_s(m_pszFrameRate, _T("LabProject ("));
@@ -286,7 +287,7 @@ void CGameFramework::ChangeSwapChainState()
 
 void CGameFramework::OnProcessingMouseMessage(HWND hWnd, UINT nMessageID, WPARAM wParam, LPARAM lParam)
 {
-	if (m_pScene) m_pScene->OnProcessingMouseMessage(hWnd, nMessageID, wParam, lParam);
+	if (m_pScene[n_Scene]) m_pScene[n_Scene]->OnProcessingMouseMessage(hWnd, nMessageID, wParam, lParam);
 	switch (nMessageID)
 	{
 		case WM_LBUTTONDOWN:
@@ -300,6 +301,20 @@ void CGameFramework::OnProcessingMouseMessage(HWND hWnd, UINT nMessageID, WPARAM
 			break;
 		case WM_MOUSEMOVE:
 			break;
+		case WM_MOUSEWHEEL:
+		{
+			int wheelDelta = GET_WHEEL_DELTA_WPARAM(wParam);
+			// wheelDelta가 양수면 휠이 앞으로(위로) 돌아갔고, 음수면 뒤로(아래로) 돌아감
+			if (wheelDelta > 0) {
+				// 텍스처 위로 이동
+				m_pScene[n_Scene]->gfWheel += 0.1f;
+			}
+			else {
+				// 텍스처 아래로 이동
+				m_pScene[n_Scene]->gfWheel -= 0.1f;
+			}
+			break;
+		}
 		default:
 			break;
 	}
@@ -307,7 +322,7 @@ void CGameFramework::OnProcessingMouseMessage(HWND hWnd, UINT nMessageID, WPARAM
 
 void CGameFramework::OnProcessingKeyboardMessage(HWND hWnd, UINT nMessageID, WPARAM wParam, LPARAM lParam)
 {
-	if (m_pScene) m_pScene->OnProcessingKeyboardMessage(hWnd, nMessageID, wParam, lParam);
+	if (m_pScene[n_Scene]) m_pScene[n_Scene]->OnProcessingKeyboardMessage(hWnd, nMessageID, wParam, lParam);
 	switch (nMessageID)
 	{
 		case WM_KEYUP:
@@ -335,6 +350,9 @@ void CGameFramework::OnProcessingKeyboardMessage(HWND hWnd, UINT nMessageID, WPA
 				case 's':
 				case 'S':
 					ChangeScene();
+					break;
+				case VK_TAB:
+					is_visiblity = !is_visiblity;
 					break;
 				default:
 					break;
@@ -364,12 +382,15 @@ LRESULT CALLBACK CGameFramework::OnProcessingWindowMessage(HWND hWnd, UINT nMess
         case WM_LBUTTONUP:
         case WM_RBUTTONUP:
         case WM_MOUSEMOVE:
+		case WM_MOUSEWHEEL:
 			OnProcessingMouseMessage(hWnd, nMessageID, wParam, lParam);
             break;
         case WM_KEYDOWN:
         case WM_KEYUP:
 			OnProcessingKeyboardMessage(hWnd, nMessageID, wParam, lParam);
 			break;
+
+		
 	}
 	return(0);
 }
@@ -410,20 +431,39 @@ void CGameFramework::BuildObjects()
 	m_pd3dCommandList->Reset(m_pd3dCommandAllocator, NULL);
 	
 	// 기존 코드
-	/*m_pScene = new CScene();
-	if (m_pScene) m_pScene->BuildObjects(m_pd3dDevice, m_pd3dCommandList);*/
+	//m_pScene = new CScene();
+	//if (m_pScene) m_pScene->BuildObjects(m_pd3dDevice, m_pd3dCommandList);
 
 
 	// 시도
 	//m_pScene = new StartScene(m_pPlayer);
-	m_pScene = new StartScene();
-	if (m_pScene) m_pScene->BuildObjects(m_pd3dDevice, m_pd3dCommandList);
+	m_pScene[0] = new StartScene();
+	if (m_pScene[0]) m_pScene[0]->BuildObjects(m_pd3dDevice, m_pd3dCommandList);
+	m_pScene[1] = new CScene();
+	if (m_pScene[1]) m_pScene[1]->BuildObjects(m_pd3dDevice, m_pd3dCommandList);
 
 
-	CAirplanePlayer *pAirplanePlayer = new CAirplanePlayer(m_pd3dDevice, m_pd3dCommandList, m_pScene->GetGraphicsRootSignature());
+	CAirplanePlayer *pAirplanePlayer = new CAirplanePlayer(m_pd3dDevice, m_pd3dCommandList, m_pScene[n_Scene]->GetGraphicsRootSignature());
 	pAirplanePlayer->SetPosition(XMFLOAT3(0.0f, -10.0f, 0.0f));
-	m_pScene->m_pPlayer = m_pPlayer = pAirplanePlayer;
+	m_pScene[0]->m_pPlayer = m_pPlayer = pAirplanePlayer;
+	m_pScene[1]->m_pPlayer = m_pPlayer = pAirplanePlayer;
 	m_pCamera = m_pPlayer->GetCamera();
+
+	//추가-----------
+	CScrollMenuShader* pTextureToScreenShader = new CScrollMenuShader(1);
+	pTextureToScreenShader->CreateShader(m_pd3dDevice, m_pd3dCommandList, m_pScene[n_Scene]->GetGraphicsRootSignature());
+	CTexture* pTexture = new CTexture(1, RESOURCE_TEXTURE2D, 0, 1);
+	pTexture->LoadTextureFromWICFile(m_pd3dDevice, m_pd3dCommandList, L"Image/menu.png", RESOURCE_TEXTURE2D, 0);
+	m_pScene[n_Scene]->CreateShaderResourceViews(m_pd3dDevice, pTexture, 0, 8);
+	pTextureToScreenShader->SetTexture(pTexture);
+
+	CScreenRectMeshTextured* pMesh = new CScreenRectMeshTextured(m_pd3dDevice, m_pd3dCommandList, -1.0f, 2.0f, 1.0f, 2.0f);
+	pTextureToScreenShader->SetMesh(0, pMesh);
+	pMesh = new CScreenRectMeshTextured(m_pd3dDevice, m_pd3dCommandList, -0.5f, 1.0f, 0.5f, 1.0f);
+	m_menu = pTextureToScreenShader;
+
+	m_pScene[n_Scene]->CreateShaderVariables(m_pd3dDevice, m_pd3dCommandList);
+	//----------------
 
 	m_pd3dCommandList->Close();
 	ID3D12CommandList *ppd3dCommandLists[] = { m_pd3dCommandList };
@@ -431,8 +471,10 @@ void CGameFramework::BuildObjects()
 
 	WaitForGpuComplete();
 
-	if (m_pScene) m_pScene->ReleaseUploadBuffers();
+	if (m_pScene[0]) m_pScene[0]->ReleaseUploadBuffers();
+	if (m_pScene[1]) m_pScene[1]->ReleaseUploadBuffers();
 	if (m_pPlayer) m_pPlayer->ReleaseUploadBuffers();
+	if (m_menu) m_menu->ReleaseUploadBuffers();
 
 	m_GameTimer.Reset();
 }
@@ -441,15 +483,20 @@ void CGameFramework::ReleaseObjects()
 {
 	if (m_pPlayer) m_pPlayer->Release();
 
-	if (m_pScene) m_pScene->ReleaseObjects();
-	if (m_pScene) delete m_pScene;
+	for (int i = 0; i < 2; ++i)
+	{
+		if (m_pScene[i]) m_pScene[i]->ReleaseObjects();
+		if (m_pScene[i]) m_pScene[i]->ReleaseCbvSrvUavDescriptorHeap(i);
+		if (m_pScene[i]) delete m_pScene[i];
+	}
+
 }
 
 void CGameFramework::ProcessInput()
 {
 	static UCHAR pKeysBuffer[256];
 	bool bProcessedByScene = false;
-	if (GetKeyboardState(pKeysBuffer) && m_pScene) bProcessedByScene = m_pScene->ProcessInput(pKeysBuffer);
+	if (GetKeyboardState(pKeysBuffer) && m_pScene[n_Scene]) bProcessedByScene = m_pScene[n_Scene]->ProcessInput(pKeysBuffer);
 	if (!bProcessedByScene)
 	{
 		DWORD dwDirection = 0;
@@ -490,8 +537,8 @@ void CGameFramework::ProcessInput()
 void CGameFramework::AnimateObjects()
 {
 	float fTimeElapsed = m_GameTimer.GetTimeElapsed();
-
-	if (m_pScene) m_pScene->AnimateObjects(fTimeElapsed);
+	
+	if (m_pScene[n_Scene]) m_pScene[n_Scene]->AnimateObjects(fTimeElapsed);
 
 	m_pPlayer->Animate(fTimeElapsed, NULL);
 }
@@ -556,15 +603,15 @@ void CGameFramework::FrameAdvance()
 	m_pd3dCommandList->ClearDepthStencilView(d3dDsvCPUDescriptorHandle, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, NULL);
 
 	m_pd3dCommandList->OMSetRenderTargets(1, &d3dRtvCPUDescriptorHandle, TRUE, &d3dDsvCPUDescriptorHandle);
-
-	if (m_pScene) m_pScene->Render(m_pd3dCommandList, m_pCamera);
+	if (m_pScene) m_pScene[n_Scene]->Render(m_pd3dCommandList, m_pCamera);
+	if (m_menu && is_visiblity) m_menu->Render(m_pd3dCommandList, m_pCamera);
 
 #ifdef _WITH_PLAYER_TOP
 	m_pd3dCommandList->ClearDepthStencilView(d3dDsvCPUDescriptorHandle, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, NULL);
 #endif
 	//추가 if문
-	if (dynamic_cast<StartScene*>(m_pScene) == nullptr)
-		if (m_pPlayer ) m_pPlayer->Render(m_pd3dCommandList, m_pCamera);
+	if (dynamic_cast<StartScene*>(m_pScene[n_Scene]) == nullptr && !is_visiblity)
+		if (m_pPlayer) m_pPlayer->Render(m_pd3dCommandList, m_pCamera);
 
 	d3dResourceBarrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
 	d3dResourceBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
@@ -609,18 +656,22 @@ void CGameFramework::ChangeScene()
 	/*m_pScene->ReleaseObjects();
 	delete m_pScene;*/
 
-	if (m_pScene) {
-		delete m_pScene;
-	}
+	n_Scene = (n_Scene + 1) % 2;
 
-	m_pd3dCommandList->Reset(m_pd3dCommandAllocator, NULL);
+	//m_pScene[n_Scene]->reload();
 
-	m_pScene = new CScene();
-	m_pScene->BuildObjects(m_pd3dDevice, m_pd3dCommandList);
+	//if (m_pScene) {
+	//	delete m_pScene;
+	//}
 
-	m_pd3dCommandList->Close();
-	ID3D12CommandList* ppd3dCommandLists[] = { m_pd3dCommandList };
-	m_pd3dCommandQueue->ExecuteCommandLists(1, ppd3dCommandLists);
+	//m_pd3dCommandList->Reset(m_pd3dCommandAllocator, NULL);
 
-	WaitForGpuComplete();
+	//m_pScene[0] = new CScene();
+	//m_pScene[0]->BuildObjects(m_pd3dDevice, m_pd3dCommandList);
+
+	//m_pd3dCommandList->Close();
+	//ID3D12CommandList* ppd3dCommandLists[] = { m_pd3dCommandList };
+	//m_pd3dCommandQueue->ExecuteCommandLists(1, ppd3dCommandLists);
+
+	//WaitForGpuComplete();
 }

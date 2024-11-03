@@ -84,9 +84,13 @@ private:
 
 	CGameTimer					m_GameTimer;
 
-	CScene						*m_pScene = NULL;
+	CScene						*m_pScene[2];
+	int							n_Scene{};
 	CPlayer						*m_pPlayer = NULL;
 	CCamera						*m_pCamera = NULL;
+
+	CShader						*m_menu = NULL;
+	bool						is_visiblity = false;
 
 	POINT						m_ptOldCursorPos;
 

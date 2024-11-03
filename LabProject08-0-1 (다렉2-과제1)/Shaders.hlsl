@@ -23,8 +23,9 @@ cbuffer cbGameObjectInfo : register(b2)
 // 추가-----
 cbuffer cbFrameworkInfo : register(b3)
 {
-    float gfCurrentTime : packoffset(c0);
-    float gfElapsedTime : packoffset(c1);
+    float gfCurrentTime : packoffset(c0.x);
+    float gfElapsedTime : packoffset(c0.y);
+    float gfWheel : packoffset(c0.z);
 };
 //----------
 
@@ -374,9 +375,28 @@ VS_TEXTURED_OUTPUT VSTextureToScreen(uint nVertexID : SV_VertexID)
 
 float4 PSTextureToScreen(VS_TEXTURED_OUTPUT2 input) : SV_TARGET
 {
-    float4 cColor = gtxtTexture.Sample(gSamplerState, input.uv);
+    float4 cColor = gtxtTexture.Sample(gssWrap, input.uv);
 
 //    if ((cColor.r > 0.85f) && (cColor.g > 0.85f) && (cColor.b > 0.85f)) discard;
 	
+    return (cColor);
+}
+
+//추가---------------------------------------------------
+VS_TEXTURED_OUTPUT VSScrollTexture(VS_TEXTURED_INPUT input)
+{
+    VS_TEXTURED_OUTPUT output;
+
+    output.position = float4(input.position, 1.0f);
+    output.uv.x = input.uv.x;
+    output.uv.y = input.uv.y * 0.5 + gfWheel;
+
+    return (output);
+}
+
+float4 PSScrollTexture(VS_TEXTURED_OUTPUT input) : SV_TARGET
+{
+    float4 cColor = gtxtTexture.Sample(gssWrap, input.uv);
+
     return (cColor);
 }
