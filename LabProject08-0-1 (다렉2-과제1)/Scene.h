@@ -99,6 +99,7 @@ public:
 	void CheckObjectByBulletCollisions();
 	void CheckShieldByBulletCollisions();
 	void CheckPlayerByBulletCollisions();
+	
 	//------------------
 
 	CPlayer								*m_pPlayer = NULL;
@@ -129,6 +130,9 @@ public:
 	float								m_ElapsedTime = 0.0f;
 	float								gfWheel = 0.0f;
 	//--------
+
+	CGameObject** m_Objects = nullptr;
+	int			m_nSize = 0;
 
 public:
 	static CDescriptorHeap*				m_pDescriptorHeap;

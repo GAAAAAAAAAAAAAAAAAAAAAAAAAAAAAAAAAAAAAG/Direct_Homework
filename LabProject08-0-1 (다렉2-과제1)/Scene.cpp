@@ -224,7 +224,8 @@ void CScene::BuildObjects(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *p
 	CObjectsShader *pObjectsShader = new CObjectsShader();
 	pObjectsShader->CreateShader(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature);
 	pObjectsShader->BuildObjects(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature, NULL);
-	
+	m_nSize = pObjectsShader->m_nObjects;
+	m_Objects = pObjectsShader->m_ppObjects;
 	
 	m_ppShaders[0] = pObjectsShader;
 	// 추가-----
@@ -565,7 +566,7 @@ void CScene::ReleaseUploadBuffers()
 	//------
 
 	for (int i = 0; i < m_nShaders; i++) m_ppShaders[i]->ReleaseUploadBuffers();
-	for (int i = 0; i < m_nGameObjects; i++) m_ppGameObjects[i]->ReleaseUploadBuffers();
+	//for (int i = 0; i < m_nGameObjects; i++) m_ppGameObjects[i]->ReleaseUploadBuffers();
 }
 
 bool CScene::OnProcessingMouseMessage(HWND hWnd, UINT nMessageID, WPARAM wParam, LPARAM lParam)
@@ -610,16 +611,26 @@ void CScene::AnimateObjects(float fTimeElapsed)
 	m_currentTime += fTimeElapsed;
 	m_ElapsedTime = fTimeElapsed;
 
+	/*if (m_nGameObjects > 1)
+		int i = 1;*/
+
 	for (int i = 0; i < m_nGameObjects; i++) if (m_ppGameObjects[i]) m_ppGameObjects[i]->Animate(fTimeElapsed, NULL);
 	for (int i = 0; i < m_nGameObjects; i++) if (m_ppGameObjects[i]) m_ppGameObjects[i]->UpdateTransform(NULL);
 
 	for (int i = 0; i < m_nShaders; i++) if (m_ppShaders[i]) m_ppShaders[i]->AnimateObjects(fTimeElapsed);
+	for (int i = 0; i < m_nSize; ++i)
+	{
+		m_Objects[i]->Animate(fTimeElapsed);
+	}
 	
 	if (m_pLights)
 	{
 		m_pLights[1].m_xmf3Position = m_pPlayer->GetPosition();
 		m_pLights[1].m_xmf3Direction = m_pPlayer->GetLookVector();
 	}
+
+	//추가
+	CheckObjectByBulletCollisions();//오브젝트와 총알의 충돌을 검사
 }
 
 void CScene::Render(ID3D12GraphicsCommandList *pd3dCommandList, CCamera *pCamera)
@@ -641,7 +652,6 @@ void CScene::Render(ID3D12GraphicsCommandList *pd3dCommandList, CCamera *pCamera
 	//터레인
 	if (m_pTerrain)
 	{
-		int i;
 		m_pTerrain->Render(pd3dCommandList, pCamera);
 	}
 
@@ -657,6 +667,7 @@ void CScene::Render(ID3D12GraphicsCommandList *pd3dCommandList, CCamera *pCamera
 			{
 				pBulletObject = exp->m_ppBullets_E[i];
 				pBulletObject->SetMovingDirection(Vector3::Subtract(m_pPlayer->GetPosition(), pBulletObject->m_xmf3FirePosition));
+				pBulletObject->Render(pd3dCommandList,pCamera);
 				break;
 			}
 		}
@@ -672,16 +683,124 @@ void CScene::Render(ID3D12GraphicsCommandList *pd3dCommandList, CCamera *pCamera
 			{
 				pBulletObject = exp->m_ppBullets_E[i];
 				pBulletObject->SetMovingDirection(Vector3::Subtract(m_pPlayer->GetPosition(), pBulletObject->m_xmf3FirePosition));
+				pBulletObject->Render(pd3dCommandList, pCamera);
 				break;
 			}
 		}
 	}
 	//-------------------
 	
-	for (int i = 0; i < m_nGameObjects; i++) if (m_ppGameObjects[i]) m_ppGameObjects[i]->Render(pd3dCommandList, pCamera);
+	//for (int i = 0; i < m_nGameObjects; i++) if (m_ppGameObjects[i]) m_ppGameObjects[i]->Render(pd3dCommandList, pCamera);
 	
 	for (int i = 0; i < m_nShaders; i++) if (m_ppShaders[i]) m_ppShaders[i]->Render(pd3dCommandList, pCamera);
 }
+
+//추가----------------------------------------
+//void CScene::CheckObjectByObjectCollisions()
+//{
+//	for (int i = 0; i < m_nGameObjects; i++) m_ppGameObjects[i]->m_pObjectCollided = NULL;
+//	for (int i = 0; i < m_nGameObjects; i++)
+//	{
+//		for (int j = (i + 1); j < m_nGameObjects; j++)
+//		{
+//			if (m_ppGameObjects[i]->m_xmOOBB.Intersects(m_ppGameObjects[j]->m_xmOOBB))
+//			{
+//				m_ppGameObjects[i]->m_pObjectCollided = m_ppGameObjects[j];
+//				m_ppGameObjects[j]->m_pObjectCollided = m_ppGameObjects[i];
+//			}
+//		}
+//	}
+//	for (int i = 0; i < m_nGameObjects; i++)
+//	{
+//		if (m_ppGameObjects[i]->m_pObjectCollided)
+//		{
+//			XMFLOAT3 xmf3MovingDirection = m_ppGameObjects[i]->m_xmf3MovingDirection;
+//			float fMovingSpeed = m_ppGameObjects[i]->m_fMovingSpeed;
+//			m_ppGameObjects[i]->m_xmf3MovingDirection = m_ppGameObjects[i]->m_pObjectCollided->m_xmf3MovingDirection;
+//			m_ppGameObjects[i]->m_fMovingSpeed = m_ppGameObjects[i]->m_pObjectCollided->m_fMovingSpeed;
+//			m_ppGameObjects[i]->m_pObjectCollided->m_xmf3MovingDirection = xmf3MovingDirection;
+//			m_ppGameObjects[i]->m_pObjectCollided->m_fMovingSpeed = fMovingSpeed;
+//			m_ppGameObjects[i]->m_pObjectCollided->m_pObjectCollided = NULL;
+//			m_ppGameObjects[i]->m_pObjectCollided = NULL;
+//		}
+//	}
+//}
+
+void CScene::CheckObjectByBulletCollisions()
+{
+	CBulletObject** ppBullets = ((CAirplanePlayer*)m_pPlayer)->m_ppBullets;	//현재 플레이어가 발사한 총알의 리스트를 가져다가
+	
+	for (int i = 0; i < m_nSize; i++)	//게임 오브젝트들을 루프를 돌면서 비교한다.
+	{
+		for (int j = 0; j < BULLETS; j++)	//모든 총알하고 육면체의 충돌을 검사.
+		{
+			//if (m_Objects[i]->m_nMeshes > 0) {
+			//	if (ppBullets[j]->m_bActive && m_Objects[i]->m_xmOOBB.Intersects(ppBullets[j]->m_xmOOBB))	//오브젝트의 OOBB를 가져다가 총알을 나타내는 OOBB와 인터섹트. TRUE면 충돌됨.
+			//	{
+			//		if (m_Objects[i]->live)
+			//		{
+
+			//			/*printf("[%d] Center: (%f, %f, %f), Extents: (%f, %f, %f), Orientation: (%f, %f, %f, %f)\n",
+			//				i,
+			//				m_Objects[i]->m_xmOOBB.Center.x, m_Objects[i]->m_xmOOBB.Center.y, m_Objects[i]->m_xmOOBB.Center.z,
+			//				m_Objects[i]->m_xmOOBB.Extents.x, m_Objects[i]->m_xmOOBB.Extents.y, m_Objects[i]->m_xmOOBB.Extents.z,
+			//				m_Objects[i]->m_xmOOBB.Orientation.x, m_Objects[i]->m_xmOOBB.Orientation.y, m_Objects[i]->m_xmOOBB.Orientation.z, m_Objects[i]->m_xmOOBB.Orientation.w);*/
+			//			ppBullets[j]->Reset();
+			//		}
+			//		m_Objects[i]->live = false;
+			//		break;
+			//	}
+			//}
+			if (m_Objects[i]->live)
+			{
+				if (ppBullets[j]->m_bActive && m_Objects[i]->HierarchyCollisionCheck(ppBullets[j]->m_xmOOBB))
+				{
+					ppBullets[j]->Reset();
+					m_Objects[i]->live = false;
+					break;
+				}
+			}
+		}
+	}
+}
+
+//void CScene::CheckShieldByBulletCollisions()
+//{
+//	CBulletObject** ppBullets;
+//	for (int i = 0; i < m_nGameObjects - 1; i++)
+//	{
+//		ppBullets = ((CUfoObject*)m_ppGameObjects[i])->m_ppBullets_E;
+//		for (int j = 0; j < BULLETS; j++)
+//		{
+//			if (ppBullets[j]->m_bActive && m_ppGameObjects[5]->m_xmOOBB.Intersects(ppBullets[j]->m_xmOOBB))	//오브젝트의 OOBB를 가져다가 총알을 나타내는 OOBB와 인터섹트. TRUE면 충돌됨.
+//			{
+//				CUfoObject* pUfoObject = (CUfoObject*)m_ppGameObjects[5];	//폭발을 그리기 위해 폭발효과 나타냄
+//				pUfoObject->m_bBlowingUp = true;
+//				ppBullets[j]->Reset();
+//				m_pPlayer->Zpush = false;
+//			}
+//		}
+//	}
+//}
+//
+//void CScene::CheckPlayerByBulletCollisions()
+//{
+//	CBulletObject** ppBullets;
+//	for (int i = 0; i < m_nGameObjects - 1; i++)
+//	{
+//		ppBullets = ((CUfoObject*)m_ppGameObjects[i])->m_ppBullets_E;
+//		for (int j = 0; j < BULLETS; j++)
+//		{
+//			if (ppBullets[j]->m_bActive && m_pPlayer->m_xmOOBB.Intersects(ppBullets[j]->m_xmOOBB))	//오브젝트의 OOBB를 가져다가 총알을 나타내는 OOBB와 인터섹트. TRUE면 충돌됨.
+//			{
+//				m_pPlayer->SetColor(XMFLOAT3(0.975f, 0.15f, 0.0f));
+//				ppBullets[j]->Reset();
+//				m_pPlayer->isCollision = true;
+//			}
+//		}
+//	}
+//}
+//-------------------------------------------
 
 //추가-----------------------------------------
 // 시도 -----------------------------------------------------------------------

@@ -115,6 +115,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	case WM_MOUSEMOVE:
 	case WM_KEYDOWN:
 	case WM_KEYUP:
+	case WM_MOUSEWHEEL:
 		gGameFramework.OnProcessingWindowMessage(hWnd, message, wParam, lParam);
 		break;
 	case WM_COMMAND:
@@ -163,23 +164,23 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 	return((INT_PTR)FALSE);
 }
 
-//#ifdef _DEBUG
-//
-//
-//
-//#ifdef UNICODE                                                                                      
-//
-//#pragma comment(linker, "/entry:wWinMainCRTStartup /subsystem:console") 
-//
-//#else                                                                                                    
-//
-//#pragma comment(linker, "/entry:WinMainCRTStartup /subsystem:console")   
-//
-//#endif                                                                                                   
-//
-//
-//#endif  
-//int main()
-//{
-//
-//}
+#ifdef _DEBUG
+
+
+
+#ifdef UNICODE                                                                                      
+
+#pragma comment(linker, "/entry:wWinMainCRTStartup /subsystem:console") 
+
+#else                                                                                                    
+
+#pragma comment(linker, "/entry:WinMainCRTStartup /subsystem:console")   
+
+#endif                                                                                                   
+
+
+#endif  
+int main()
+{
+
+}

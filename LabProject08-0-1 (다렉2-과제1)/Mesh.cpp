@@ -592,6 +592,8 @@ void CStandardMesh::LoadMeshFromFile(ID3D12Device *pd3dDevice, ID3D12GraphicsCom
 			break;
 		}
 	}
+	//추가
+	CalculateOBB();
 }
 
 void CStandardMesh::Render(ID3D12GraphicsCommandList *pd3dCommandList, int nSubSet)
@@ -1131,4 +1133,19 @@ CScreenRectMeshTextured::CScreenRectMeshTextured(ID3D12Device* pd3dDevice, ID3D1
 
 CScreenRectMeshTextured::~CScreenRectMeshTextured()
 {
+}
+
+
+//추가=======================
+CBulletMesh::CBulletMesh(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, char* pstrFileName, bool bTextFile)
+{
+	if (pstrFileName) LoadMeshFromFile(pd3dDevice, pd3dCommandList, pstrFileName, bTextFile);
+}
+
+void CBulletMesh::Render(ID3D12GraphicsCommandList* pd3dCommandList, int nSubSet)
+{
+	pd3dCommandList->IASetPrimitiveTopology(m_d3dPrimitiveTopology);
+	pd3dCommandList->IASetVertexBuffers(m_nSlot, 3, m_pd3dVertexBufferViews);
+	pd3dCommandList->IASetIndexBuffer(&m_d3dIndexBufferView);
+	pd3dCommandList->DrawIndexedInstanced(m_nIndices, 1, 0, 0, 0);
 }

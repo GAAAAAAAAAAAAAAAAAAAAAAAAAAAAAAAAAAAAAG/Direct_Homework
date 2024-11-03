@@ -181,6 +181,8 @@ public:
 	// 추가--
 	CMesh							**m_ppMeshes;
 	int								m_nMeshes;
+	static int						idcnt;
+	int								id;
 	//---
 
 	int								m_nMaterials = 0;
@@ -268,6 +270,8 @@ public:
 	void SetLookAt(XMFLOAT3& xmf3Target, XMFLOAT3& xmf3Up = XMFLOAT3(0.0f, 1.0f, 0.0f));
 	
 	// [추가] 총알하려고----------------------------
+	bool						live = true;
+
 	CShader* m_pShader = NULL;
 
 	XMFLOAT3					m_xmf3Color = XMFLOAT3(1.0f, 1.0f, 1.0f);
@@ -301,6 +305,8 @@ public:
 
 	// OBB를 반환하는 메서드 추가
 	const DirectX::BoundingOrientedBox& GetOBB() const { return m_pMesh->GetOBB(); }
+
+	bool HierarchyCollisionCheck(const BoundingOrientedBox& m_xmOOBB);
 	
 };
 // 추가----------------------
@@ -352,7 +358,7 @@ public:
 	virtual void Animate(float fTimeElapsed, XMFLOAT4X4 *pxmf4x4Parent = NULL);
 
 	// 추가----------------------------------
-	bool						live = true;
+	//bool						live = true;
 	bool						isAnimatingEnd = false;
 	float						fBulletTimer = RandF(0.0f, 6.0f);
 	float						m_fBulletEffectiveRange = 150.0f;
@@ -377,7 +383,7 @@ public:
 	virtual void Animate(float fTimeElapsed, XMFLOAT4X4 *pxmf4x4Parent = NULL);
 	
 	// 추가
-	bool						live = true;
+	//bool						live = true;
 	bool						isAnimatingEnd = false;
 	float						fBulletTimer = RandF(0.0f, 6.0f);
 	float						m_fBulletEffectiveRange = 150.0f;

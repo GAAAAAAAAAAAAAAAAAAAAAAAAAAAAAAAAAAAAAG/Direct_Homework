@@ -25,6 +25,7 @@
 class CMesh
 {
 public:
+	CMesh() = default;
 	CMesh(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList);
 	//Ãß°¡---
 	CMesh(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, char* pstrFileName, bool bTextFile);
@@ -362,3 +363,9 @@ public:
 	virtual ~CScreenRectMeshTextured();
 };
 
+class CBulletMesh : public CMesh
+{
+public:
+	CBulletMesh(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, char* pstrFileName, bool bTextFile);
+	virtual void Render(ID3D12GraphicsCommandList* pd3dCommandList, int nSubSet);
+};

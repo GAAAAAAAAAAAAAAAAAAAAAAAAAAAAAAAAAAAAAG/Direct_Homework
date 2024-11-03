@@ -250,11 +250,11 @@ CAirplanePlayer::CAirplanePlayer(ID3D12Device *pd3dDevice, ID3D12GraphicsCommand
 //	m_pShader->CreateCbvSrvDescriptorHeaps(pd3dDevice, 0, 1); //Mi24(1)
 
 	//추가---
-	CMesh* pBulletMesh = new CMesh(pd3dDevice, pd3dCommandList, "Model/bullet.bin", false);
+	CBulletMesh* pBulletMesh = new CBulletMesh(pd3dDevice, pd3dCommandList, "Model/bullet.bin", false);
 	for (int i = 0; i < BULLETS; i++)
 	{
 		m_ppBullets[i] = new CBulletObject(m_fBulletEffectiveRange);
-		m_ppBullets[i]->SetMesh(pBulletMesh);
+		m_ppBullets[i]->SetMesh(0,pBulletMesh);
 		m_ppBullets[i]->SetRotationAxis(XMFLOAT3(0.0f, 1.0f, 0.0f));
 		m_ppBullets[i]->SetRotationSpeed(360.0f);
 		m_ppBullets[i]->SetMovingSpeed(30.0f);
@@ -361,6 +361,7 @@ CCamera *CAirplanePlayer::ChangeCamera(DWORD nNewCameraMode, float fTimeElapsed)
 //추가---------------------
 void CAirplanePlayer::FireBullet(CGameObject* pLockedObject)
 {
+	
 	CBulletObject* pBulletObject = NULL;
 	for (int i = 0; i < BULLETS; i++)
 	{
@@ -377,8 +378,8 @@ void CAirplanePlayer::FireBullet(CGameObject* pLockedObject)
 		XMFLOAT3 xmf3Direction = GetLook();
 		XMFLOAT3 xmf3FirePosition = Vector3::Add(xmf3Position, Vector3::ScalarProduct(xmf3Direction, 6.0f, false));
 
-		pBulletObject->m_xmf4x4World = m_xmf4x4World;
-
+		pBulletObject->m_xmf4x4Transform = m_xmf4x4Transform;
+		//printf("%f %f %f\n", pBulletObject->GetPosition().x, pBulletObject->GetPosition().y, pBulletObject->GetPosition().z);
 		pBulletObject->SetFirePosition(xmf3FirePosition);
 		pBulletObject->SetMovingDirection(xmf3Direction);
 		pBulletObject->SetActive(true);
@@ -393,7 +394,7 @@ void CAirplanePlayer::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera
 		if (m_pShader) m_pShader->Render(pd3dCommandList, pCamera, 0);
 		CGameObject::Render(pd3dCommandList, pCamera);
 	}
-
+	
 	for (int i = 0; i < BULLETS; i++)
 		if (m_ppBullets[i]->m_bActive)
 			m_ppBullets[i]->Render(pd3dCommandList, pCamera);

@@ -307,11 +307,11 @@ void CGameFramework::OnProcessingMouseMessage(HWND hWnd, UINT nMessageID, WPARAM
 			// wheelDelta가 양수면 휠이 앞으로(위로) 돌아갔고, 음수면 뒤로(아래로) 돌아감
 			if (wheelDelta > 0) {
 				// 텍스처 위로 이동
-				m_pScene[n_Scene]->gfWheel += 0.1f;
+				m_pScene[n_Scene]->gfWheel -= 0.05f;
 			}
 			else {
 				// 텍스처 아래로 이동
-				m_pScene[n_Scene]->gfWheel -= 0.1f;
+				m_pScene[n_Scene]->gfWheel += 0.05f;
 			}
 			break;
 		}
@@ -653,25 +653,5 @@ void CGameFramework::FrameAdvance()
 //시도
 void CGameFramework::ChangeScene()
 {
-	/*m_pScene->ReleaseObjects();
-	delete m_pScene;*/
-
 	n_Scene = (n_Scene + 1) % 2;
-
-	//m_pScene[n_Scene]->reload();
-
-	//if (m_pScene) {
-	//	delete m_pScene;
-	//}
-
-	//m_pd3dCommandList->Reset(m_pd3dCommandAllocator, NULL);
-
-	//m_pScene[0] = new CScene();
-	//m_pScene[0]->BuildObjects(m_pd3dDevice, m_pd3dCommandList);
-
-	//m_pd3dCommandList->Close();
-	//ID3D12CommandList* ppd3dCommandLists[] = { m_pd3dCommandList };
-	//m_pd3dCommandQueue->ExecuteCommandLists(1, ppd3dCommandLists);
-
-	//WaitForGpuComplete();
 }

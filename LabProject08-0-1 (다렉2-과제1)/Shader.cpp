@@ -458,6 +458,7 @@ void CObjectsShader::BuildObjects(ID3D12Device *pd3dDevice, ID3D12GraphicsComman
 			//추가------
 			m_ppObjects[nObjects]->SetMovingDirection(XMFLOAT3(1.0f, 0.0f, 0.0f));
 			m_ppObjects[nObjects]->SetMovingSpeed(2.5f);
+			m_ppObjects[nObjects]->live =true;
 			//---------
 			m_ppObjects[nObjects++]->PrepareAnimate();
 		}
@@ -518,7 +519,7 @@ void CObjectsShader::Render(ID3D12GraphicsCommandList *pd3dCommandList, CCamera 
 
 	for (int j = 0; j < m_nObjects; j++)
 	{
-		if (m_ppObjects[j])
+		if (m_ppObjects[j]->live)	//수정
 		{
 			m_ppObjects[j]->Animate(0.16f);
 			m_ppObjects[j]->UpdateTransform(NULL);
