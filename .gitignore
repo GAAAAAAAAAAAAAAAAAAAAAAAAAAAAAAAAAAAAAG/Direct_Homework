@@ -1,21 +1,32 @@
-# 컴파일된 소스 파일들
-*.class
-*.dll
-*.exe
+# Prerequisites
+*.d
+
+# Compiled Object files
+*.slo
+*.lo
 *.o
 *.obj
 
-# 디렉토리 무시
-bin/
-obj/
+# Precompiled Headers
+*.gch
+*.pch
 
-# 로그 파일 무시
-*.log
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
 
-# 임시 파일 무시
-*.tmp
-*.swp
-*.swo
+# Fortran module files
+*.mod
+*.smod
 
-# 특정 파일 무시 (예: README.md)
-README.md
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
