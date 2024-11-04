@@ -86,6 +86,7 @@ public:
 	float						collisionTime = 0.0f;
 	bool						isCollision = false;
 	bool						Zpush = false;
+	float						m_fKnockbackStrength=0.0f;
 };
 
 class CAirplanePlayer : public CPlayer

@@ -128,11 +128,15 @@ public:
 
 	float								m_currentTime = 0.0f;
 	float								m_ElapsedTime = 0.0f;
+
 	float								gfWheel = 0.0f;
 	//--------
 
 	CGameObject** m_Objects = nullptr;
 	int			m_nSize = 0;
+
+	CGameObject** m_ExplodeObjects = nullptr;
+	int			m_nExplodeSize = 0;
 
 public:
 	static CDescriptorHeap*				m_pDescriptorHeap;
@@ -163,15 +167,11 @@ public:
 class StartScene : public CScene
 {
 public:
-	StartScene(CPlayer* pPlayer);  // 持失切 識情
-	StartScene();  // 持失切 識情
+	StartScene(CPlayer* pPlayer); 
+	StartScene();
 	virtual ~StartScene() {}
 
 public:
 	virtual void BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList);
 	virtual void Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera = NULL);
-	//virtual void ReleaseObjects();
-	//virtual void SetPlayer(CPlayer* pPlayer);
-	//virtual void Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera = NULL);
-
 };

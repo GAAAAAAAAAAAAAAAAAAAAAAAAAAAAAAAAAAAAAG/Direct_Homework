@@ -202,6 +202,10 @@ public:
 	CGameObject 					*m_pChild = NULL;
 	CGameObject 					*m_pSibling = NULL;
 
+	//추가---
+
+	//-------
+
 	//void SetMesh(CMesh *pMesh);
 	void SetShader(CShader *pShader);
 	void SetShader(int nMaterial, CShader *pShader);
@@ -304,8 +308,10 @@ public:
 	virtual void FireBullet() {};
 
 	// OBB를 반환하는 메서드 추가
+	BoundingOrientedBox					m_animatedxmOOBB = BoundingOrientedBox();
 	const DirectX::BoundingOrientedBox& GetOBB() const { return m_pMesh->GetOBB(); }
-
+	void UpdateBoundBox();
+	void SetObb(float fWidth, float fHeight, float fDepth, float y);
 	bool HierarchyCollisionCheck(const BoundingOrientedBox& m_xmOOBB);
 	
 };
@@ -467,4 +473,21 @@ public:
 
 	float m_fRotationAngle = 0.0f;
 	float m_fRotationDelta = 1.0f;
+};
+//추가-------------------------------
+class CExplodeObject : public CGameObject
+{
+public:
+	CExplodeObject();
+	virtual ~CExplodeObject();
+
+	virtual void Animate(float fDeltaTime, XMFLOAT4X4* pxmf4x4Parent = NULL);
+	virtual void UpdateShaderVariable(ID3D12GraphicsCommandList* pd3dCommandList, XMFLOAT4X4* pxmf4x4World);
+
+	float m_fRotationAngle = 0.0f;
+	float m_fRotationDelta = 1.0f;
+
+	//bool						live = false;
+	float lifeTime = 8.0f;
+	float m_NowTime = 0.0f;
 };

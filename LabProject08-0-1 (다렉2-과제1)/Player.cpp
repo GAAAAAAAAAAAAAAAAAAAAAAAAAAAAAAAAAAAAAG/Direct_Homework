@@ -157,6 +157,24 @@ void CPlayer::Update(float fTimeElapsed)
 	fLength = sqrtf(m_xmf3Velocity.y * m_xmf3Velocity.y);
 	if (fLength > m_fMaxVelocityY) m_xmf3Velocity.y *= (fMaxVelocityY / fLength);
 
+	//추가----
+
+	if (m_pObjectCollided)
+	{
+		// 넉백 적용 시 넉백 벡터를 시간에 따라 줄이기
+		m_xmf3Velocity = Vector3::Add(m_xmf3Velocity, Vector3::ScalarProduct(Vector3::Normalize(m_pObjectCollided->GetPosition()-GetPosition()), m_fKnockbackStrength, false));
+		m_fKnockbackStrength -= (1.0f * fTimeElapsed); // 넉백 강도 감소
+
+		// 넉백 강도가 0 이하로 줄어들면 넉백 비활성화
+		if (m_fKnockbackStrength <= 0.0f)
+		{
+			m_fKnockbackStrength = 0.0f;
+			m_pObjectCollided = NULL;
+		}
+	}
+
+	//-------
+
 	XMFLOAT3 xmf3Velocity = Vector3::ScalarProduct(m_xmf3Velocity, fTimeElapsed, false);
 	Move(xmf3Velocity, false);
 
@@ -261,6 +279,7 @@ CAirplanePlayer::CAirplanePlayer(ID3D12Device *pd3dDevice, ID3D12GraphicsCommand
 		m_ppBullets[i]->SetActive(false);
 	}
 	//------
+	SetObb(8.0f, 5.0f, 8.0f, 0.0f);
 
 	CGameObject *pGameObject = CGameObject::LoadGeometryFromFile(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature, "Model/Mi24.bin", m_pShader);
 	SetChild(pGameObject);

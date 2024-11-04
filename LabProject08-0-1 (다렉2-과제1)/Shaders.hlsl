@@ -26,6 +26,7 @@ cbuffer cbFrameworkInfo : register(b3)
     float gfCurrentTime : packoffset(c0.x);
     float gfElapsedTime : packoffset(c0.y);
     float gfWheel : packoffset(c0.z);
+    float gfNowTime : packoffset(c0.w);
 };
 //----------
 
@@ -298,22 +299,12 @@ VS_TEXTURED_OUTPUT VSBillboard(VS_TEXTURED_INPUT input)
 #ifdef _WITH_BILLBOARD_ANIMATION
     if (input.uv.y < 0.7f)
     {
-		// [조금만 움직이는 애니메이션]
-        //float fShift = 0.0f;
-        //int nResidual = ((int) gfCurrentTime % 4);
-        //if (nResidual == 1)
-        //    fShift = -gfElapsedTime * 0.5f;
-        //if (nResidual == 3)
-        //    fShift = +gfElapsedTime * 0.5f;
-        //input.uv.x += fShift;
-		
-		// [격하게 움직이는 애니메이션]
         float fShift = 0.0f;
-        int nResidual = ((int) 3 * gfCurrentTime % 4); // 수정
+        int nResidual = ((int) 3 * gfCurrentTime % 4);
         if (nResidual == 1)
-            fShift = -0.06f; // 수정
+            fShift = -0.06f;
         if (nResidual == 3)
-            fShift = +0.06f; // 수정
+            fShift = +0.06f;
         input.uv.x += fShift;
     }
 #endif
@@ -358,21 +349,6 @@ VS_TEXTURED_OUTPUT2 VSTextureToScreen(VS_TEXTURED_INPUT2 input)
     return (output);
 }
 
-/*
-VS_TEXTURED_OUTPUT VSTextureToScreen(uint nVertexID : SV_VertexID)
-{
-	VS_TEXTURED_OUTPUT output;
-	if (nVertexID == 0) { output.position = float4(-1.0f, +1.0f, 0.0f, 1.0f); output.uv = float2(0.0f, 0.0f); }
-	if (nVertexID == 1) { output.position = float4(+1.0f, +1.0f, 0.0f, 1.0f); output.uv = float2(1.0f, 0.0f); }
-	if (nVertexID == 2) { output.position = float4(+1.0f, -1.0f, 0.0f, 1.0f); output.uv = float2(1.0f, 1.0f); }
-	if (nVertexID == 3) { output.position = float4(-1.0f, +1.0f, 0.0f, 1.0f); output.uv = float2(0.0f, 0.0f); }
-	if (nVertexID == 4) { output.position = float4(+1.0f, -1.0f, 0.0f, 1.0f); output.uv = float2(1.0f, 1.0f); }
-	if (nVertexID == 5) { output.position = float4(-1.0f, -1.0f, 0.0f, 1.0f); output.uv = float2(0.0f, 1.0f); }
-
-	return(output);
-}
-*/
-
 float4 PSTextureToScreen(VS_TEXTURED_OUTPUT2 input) : SV_TARGET
 {
     float4 cColor = gtxtTexture.Sample(gssWrap, input.uv);
@@ -397,6 +373,45 @@ VS_TEXTURED_OUTPUT VSScrollTexture(VS_TEXTURED_INPUT input)
 float4 PSScrollTexture(VS_TEXTURED_OUTPUT input) : SV_TARGET
 {
     float4 cColor = gtxtTexture.Sample(gssWrap, input.uv);
+
+    return (cColor);
+}
+
+//추가---------------------------------------------------
+
+VS_TEXTURED_OUTPUT VSSpriteTexture(VS_TEXTURED_INPUT input)
+{
+    VS_TEXTURED_OUTPUT output;
+
+
+    output.position = mul(mul(mul(float4(input.position, 1.0f), gmtxGameObject), gmtxView), gmtxProjection);
+    output.uv = input.uv;
+
+    return (output);
+}
+
+float4 PSSpriteTexture(VS_TEXTURED_OUTPUT input) : SV_TARGET
+{
+     // 애니메이션에 사용할 텍스처의 가로 프레임 수와 세로 프레임 수
+    int frameWidth = 8; // 예: 텍스처가 4개의 가로 프레임으로 나뉘어 있을 때
+    int frameHeight = 8; // 예: 텍스처가 4개의 세로 프레임으로 나뉘어 있을 때
+
+    // 현재 프레임 번호 (예: 외부에서 전달받아 시간에 따라 변경)
+    float currentFrame = floor(gfNowTime * 8) % (frameWidth * frameHeight);
+    int frameX = int(currentFrame) % frameWidth;
+    int frameY = int(currentFrame) / frameWidth;
+
+    // uv 좌표를 조정하여 현재 프레임의 텍스처 영역으로 이동
+    float2 frameSize = float2(1.0 / frameWidth, 1.0 / frameHeight);
+    float2 frameOffset = float2(frameX * frameSize.x, frameY * frameSize.y);
+
+    float2 animatedUV = frameOffset + input.uv * frameSize;
+
+    //텍스처 샘플링
+    float4 cColor = gtxtTexture.Sample(gssWrap, animatedUV);
+	
+    if (cColor.a < 0.85)
+        discard;
 
     return (cColor);
 }

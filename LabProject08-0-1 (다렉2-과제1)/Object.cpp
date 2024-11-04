@@ -439,7 +439,8 @@ void CGameObject::Animate(float fTimeElapsed, XMFLOAT4X4 *pxmf4x4Parent)
 	if (m_pChild) m_pChild->Animate(fTimeElapsed, &m_xmf4x4World);
 
 	//추가
-	UpdateBoundingBox();
+	//UpdateBoundingBox();
+	UpdateBoundBox();
 }
 
 CGameObject *CGameObject::FindFrame(char *pstrFrameName)
@@ -902,29 +903,40 @@ CGameObject *CGameObject::LoadGeometryFromFile(ID3D12Device *pd3dDevice, ID3D12G
 //	}
 //}
 
-void CGameObject::UpdateBoundingBox()
-{
-	// if문 수정 m_ppMeshes && 제외
-	if ( m_nMeshes > 0) // 메쉬가 있고, 최소 하나 이상의 메쉬가 있는지 확인
-	{
-		for (int i = 0; i < m_nMeshes; ++i) // 모든 메쉬를 반복
-		{
-			if (m_ppMeshes[i]) // 현재 메쉬가 유효한지 확인
-			{
-				// 각 메쉬의 바운딩 박스를 월드 변환 행렬을 사용하여 변환
-				m_ppMeshes[i]->m_xmOOBB.Transform(m_xmOOBB, XMLoadFloat4x4(&m_xmf4x4World));
-				//m_ppMeshes[i]->m_xmOOBB.Transform(m_xmOOBB, XMLoadFloat4x4(&m_xmf4x4Transform));
-				/*printf("[%d] Center: (%f, %f, %f), Extents: (%f, %f, %f), Orientation: (%f, %f, %f, %f)\n",
-					i,
-					m_xmOOBB.Center.x, m_xmOOBB.Center.y, m_xmOOBB.Center.z,
-					m_xmOOBB.Extents.x, m_xmOOBB.Extents.y, m_xmOOBB.Extents.z,
-					m_xmOOBB.Orientation.x, m_xmOOBB.Orientation.y, m_xmOOBB.Orientation.z, m_xmOOBB.Orientation.w);*/
+//void CGameObject::UpdateBoundingBox()
+//{
+//	// if문 수정 m_ppMeshes && 제외
+//	if ( m_nMeshes > 0) // 메쉬가 있고, 최소 하나 이상의 메쉬가 있는지 확인
+//	{
+//		for (int i = 0; i < m_nMeshes; ++i) // 모든 메쉬를 반복
+//		{
+//			if (m_ppMeshes[i]) // 현재 메쉬가 유효한지 확인
+//			{
+//				// 각 메쉬의 바운딩 박스를 월드 변환 행렬을 사용하여 변환
+//				m_ppMeshes[i]->m_xmOOBB.Transform(m_xmOOBB, XMLoadFloat4x4(&m_xmf4x4World));
+//				//m_ppMeshes[i]->m_xmOOBB.Transform(m_xmOOBB, XMLoadFloat4x4(&m_xmf4x4Transform));
+//				/*printf("[%d] Center: (%f, %f, %f), Extents: (%f, %f, %f), Orientation: (%f, %f, %f, %f)\n",
+//					i,
+//					m_xmOOBB.Center.x, m_xmOOBB.Center.y, m_xmOOBB.Center.z,
+//					m_xmOOBB.Extents.x, m_xmOOBB.Extents.y, m_xmOOBB.Extents.z,
+//					m_xmOOBB.Orientation.x, m_xmOOBB.Orientation.y, m_xmOOBB.Orientation.z, m_xmOOBB.Orientation.w);*/
+//
+//				// 변환된 바운딩 박스의 오리엔테이션을 정규화하고 저장
+//				XMStoreFloat4(&m_xmOOBB.Orientation, XMQuaternionNormalize(XMLoadFloat4(&m_xmOOBB.Orientation)));
+//			}
+//		}
+//	}
+//}
 
-				// 변환된 바운딩 박스의 오리엔테이션을 정규화하고 저장
-				XMStoreFloat4(&m_xmOOBB.Orientation, XMQuaternionNormalize(XMLoadFloat4(&m_xmOOBB.Orientation)));
-			}
-		}
-	}
+void CGameObject::UpdateBoundBox()
+{
+	m_xmOOBB.Transform(m_animatedxmOOBB, XMLoadFloat4x4(&m_xmf4x4World));
+	XMStoreFloat4(&m_animatedxmOOBB.Orientation, XMQuaternionNormalize(XMLoadFloat4(&m_animatedxmOOBB.Orientation)));
+}
+
+void CGameObject::SetObb(float fWidth, float fHeight, float fDepth, float y)
+{
+	m_xmOOBB = BoundingOrientedBox(XMFLOAT3(0.0f, y, 0.0f), XMFLOAT3(fWidth, fHeight, fDepth), XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f));
 }
 
 bool CGameObject::HierarchyCollisionCheck(const BoundingOrientedBox& otherOOBB)
@@ -1000,6 +1012,7 @@ CSuperCobraObject::CSuperCobraObject(ID3D12Device *pd3dDevice, ID3D12GraphicsCom
 	}
 	//시도
 	//m_xmOOBB = BoundingOrientedBox();
+	SetObb(8.0f, 5.0f, 8.0f, 0.0f);
 }
 
 CSuperCobraObject::~CSuperCobraObject()
@@ -1072,6 +1085,7 @@ CGunshipObject::CGunshipObject(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandLi
 	}
 	//시도
 	//m_xmOOBB = BoundingOrientedBox();
+	SetObb(8.0f, 5.0f, 8.0f, 0.0f);
 }
 
 CGunshipObject::~CGunshipObject()
@@ -1241,6 +1255,7 @@ CGrassObject::~CGrassObject()
 {
 }
 
+
 void CGrassObject::Animate(float fDeltaTime)
 {
 	if (m_fRotationAngle <= -1.5f) m_fRotationDelta = 1.0f;
@@ -1249,13 +1264,49 @@ void CGrassObject::Animate(float fDeltaTime)
 
 	Rotate(0.0f, 0.0f, m_fRotationAngle);
 }
-//--------
+//--------폭발 이펙트 추가-------------
+CExplodeObject::CExplodeObject() : CGameObject(1, 1)
+{
+	m_xmf4x4Transform = Matrix4x4::Identity();
+	m_xmf4x4World = Matrix4x4::Identity();
+}
+
+CExplodeObject::~CExplodeObject()
+{
+}
+
+void CExplodeObject::Animate(float fDeltaTime, XMFLOAT4X4* pxmf4x4Parent)
+{
+	//TODO: lifeTime이 긑나면 다시 live 를 FALSE로
+	if (live)
+	{
+		lifeTime -= fDeltaTime;
+		m_NowTime += fDeltaTime;
+		if(lifeTime < 0.0f)
+			live = false;
+	}
+
+	//if (m_fRotationAngle <= -1.5f) m_fRotationDelta = 1.0f;
+	//if (m_fRotationAngle >= +1.5f) m_fRotationDelta = -1.0f;
+	//m_fRotationAngle += m_fRotationDelta * fDeltaTime;
+
+	//Rotate(0.0f, 0.0f, m_fRotationAngle);
+}
+
+void CExplodeObject::UpdateShaderVariable(ID3D12GraphicsCommandList* pd3dCommandList, XMFLOAT4X4* pxmf4x4World)
+{
+	XMFLOAT4X4 xmf4x4World;
+	XMStoreFloat4x4(&xmf4x4World, XMMatrixTranspose(XMLoadFloat4x4(pxmf4x4World)));
+	pd3dCommandList->SetGraphicsRoot32BitConstants(1, 16, &xmf4x4World, 0);
+	pd3dCommandList->SetGraphicsRoot32BitConstants(7, 1, &m_NowTime, 3);
+}
+
 
 //총알 추가------------------------
 /////////////////////////////////총알////////////////////////////
 CBulletObject::CBulletObject(float fEffectiveRange) : CGameObject(1, 1)
 {
-
+	SetObb(0.5f, 0.5f, 0.5f, 0);
 	m_fBulletEffectiveRange = fEffectiveRange;
 }
 
@@ -1266,7 +1317,7 @@ CBulletObject::~CBulletObject()
 void CBulletObject::Animate(float fElapsedTime)
 {
 	m_fElapsedTimeAfterFire += fElapsedTime;
-
+	//추가
 	float fDistance = m_fMovingSpeed * fElapsedTime;
 
 	if ((m_fElapsedTimeAfterFire > m_fLockingDelayTime) && m_pLockedObject)	//락된 오브젝트가 있다면

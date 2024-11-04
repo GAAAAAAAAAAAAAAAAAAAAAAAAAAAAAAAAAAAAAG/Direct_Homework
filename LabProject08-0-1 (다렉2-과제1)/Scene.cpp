@@ -4,6 +4,7 @@
 
 #include "stdafx.h"
 #include "Scene.h"
+#include "Shader.h"
 
 CDescriptorHeap* CScene::m_pDescriptorHeap = NULL;
 
@@ -218,7 +219,7 @@ void CScene::BuildObjects(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *p
 
 	m_pSkyBox = new CSkyBox(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature);
 
-	m_nShaders = 2;
+	m_nShaders = 3;
 	m_ppShaders = new CShader*[m_nShaders];
 
 	CObjectsShader *pObjectsShader = new CObjectsShader();
@@ -235,6 +236,18 @@ void CScene::BuildObjects(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *p
 	pObjectShader->CreateShader(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature);
 	pObjectShader->BuildObjects(pd3dDevice, pd3dCommandList, m_pTerrain);
 	m_ppShaders[1] = pObjectShader;
+
+	//추가 애니메이션---
+	CSpriteAnimationShader* pSpriteAnimationShader = new CSpriteAnimationShader();
+	pSpriteAnimationShader->CreateShader(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature);
+	pSpriteAnimationShader->BuildObjects(pd3dDevice, pd3dCommandList);
+	m_ppShaders[2] = pSpriteAnimationShader;
+
+	m_nExplodeSize = pSpriteAnimationShader->m_nObjects;
+	m_ExplodeObjects = pSpriteAnimationShader->m_ppObjects;
+	
+
+	//--------------------
 
 	//m_ppGameObjects = pObjectsShader->m_ppObjects;
 	//m_nGameObjects = pObjectsShader->m_nObjects;
@@ -470,7 +483,7 @@ ID3D12RootSignature *CScene::CreateGraphicsRootSignature(ID3D12Device *pd3dDevic
 	pd3dRootParameters[6].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
 	pd3dRootParameters[7].ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;	//b3
-	pd3dRootParameters[7].Constants.Num32BitValues = 3;
+	pd3dRootParameters[7].Constants.Num32BitValues = 4;
 	pd3dRootParameters[7].Constants.ShaderRegister = 3;
 	pd3dRootParameters[7].Constants.RegisterSpace = 0;
 	pd3dRootParameters[7].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
@@ -631,6 +644,7 @@ void CScene::AnimateObjects(float fTimeElapsed)
 
 	//추가
 	CheckObjectByBulletCollisions();//오브젝트와 총알의 충돌을 검사
+	CheckObjectByObjectCollisions();
 }
 
 void CScene::Render(ID3D12GraphicsCommandList *pd3dCommandList, CCamera *pCamera)
@@ -696,35 +710,22 @@ void CScene::Render(ID3D12GraphicsCommandList *pd3dCommandList, CCamera *pCamera
 }
 
 //추가----------------------------------------
-//void CScene::CheckObjectByObjectCollisions()
-//{
-//	for (int i = 0; i < m_nGameObjects; i++) m_ppGameObjects[i]->m_pObjectCollided = NULL;
-//	for (int i = 0; i < m_nGameObjects; i++)
-//	{
-//		for (int j = (i + 1); j < m_nGameObjects; j++)
-//		{
-//			if (m_ppGameObjects[i]->m_xmOOBB.Intersects(m_ppGameObjects[j]->m_xmOOBB))
-//			{
-//				m_ppGameObjects[i]->m_pObjectCollided = m_ppGameObjects[j];
-//				m_ppGameObjects[j]->m_pObjectCollided = m_ppGameObjects[i];
-//			}
-//		}
-//	}
-//	for (int i = 0; i < m_nGameObjects; i++)
-//	{
-//		if (m_ppGameObjects[i]->m_pObjectCollided)
-//		{
-//			XMFLOAT3 xmf3MovingDirection = m_ppGameObjects[i]->m_xmf3MovingDirection;
-//			float fMovingSpeed = m_ppGameObjects[i]->m_fMovingSpeed;
-//			m_ppGameObjects[i]->m_xmf3MovingDirection = m_ppGameObjects[i]->m_pObjectCollided->m_xmf3MovingDirection;
-//			m_ppGameObjects[i]->m_fMovingSpeed = m_ppGameObjects[i]->m_pObjectCollided->m_fMovingSpeed;
-//			m_ppGameObjects[i]->m_pObjectCollided->m_xmf3MovingDirection = xmf3MovingDirection;
-//			m_ppGameObjects[i]->m_pObjectCollided->m_fMovingSpeed = fMovingSpeed;
-//			m_ppGameObjects[i]->m_pObjectCollided->m_pObjectCollided = NULL;
-//			m_ppGameObjects[i]->m_pObjectCollided = NULL;
-//		}
-//	}
-//}
+void CScene::CheckObjectByObjectCollisions()
+{
+	for (int i = 0; i < m_nSize; i++) m_Objects[i]->m_pObjectCollided = NULL;
+	for (int i = 0; i < m_nSize; i++)
+	{
+		for (int j = (i + 1); j < m_nSize; j++)
+		{
+			if (m_Objects[i]->live && m_Objects[i]->m_animatedxmOOBB.Intersects(m_pPlayer->m_animatedxmOOBB)&& m_pPlayer->m_pObjectCollided==NULL)
+			{
+				//m_Objects[i]->m_pObjectCollided = m_Objects[j];
+				m_pPlayer->m_pObjectCollided = m_Objects[j];
+				m_pPlayer->m_fKnockbackStrength = 2.0f;
+			}
+		}
+	}
+}
 
 void CScene::CheckObjectByBulletCollisions()
 {
@@ -734,31 +735,16 @@ void CScene::CheckObjectByBulletCollisions()
 	{
 		for (int j = 0; j < BULLETS; j++)	//모든 총알하고 육면체의 충돌을 검사.
 		{
-			//if (m_Objects[i]->m_nMeshes > 0) {
-			//	if (ppBullets[j]->m_bActive && m_Objects[i]->m_xmOOBB.Intersects(ppBullets[j]->m_xmOOBB))	//오브젝트의 OOBB를 가져다가 총알을 나타내는 OOBB와 인터섹트. TRUE면 충돌됨.
-			//	{
-			//		if (m_Objects[i]->live)
-			//		{
-
-			//			/*printf("[%d] Center: (%f, %f, %f), Extents: (%f, %f, %f), Orientation: (%f, %f, %f, %f)\n",
-			//				i,
-			//				m_Objects[i]->m_xmOOBB.Center.x, m_Objects[i]->m_xmOOBB.Center.y, m_Objects[i]->m_xmOOBB.Center.z,
-			//				m_Objects[i]->m_xmOOBB.Extents.x, m_Objects[i]->m_xmOOBB.Extents.y, m_Objects[i]->m_xmOOBB.Extents.z,
-			//				m_Objects[i]->m_xmOOBB.Orientation.x, m_Objects[i]->m_xmOOBB.Orientation.y, m_Objects[i]->m_xmOOBB.Orientation.z, m_Objects[i]->m_xmOOBB.Orientation.w);*/
-			//			ppBullets[j]->Reset();
-			//		}
-			//		m_Objects[i]->live = false;
-			//		break;
-			//	}
-			//}
-			if (m_Objects[i]->live)
+			if (ppBullets[j]->m_bActive && m_Objects[i]->m_animatedxmOOBB.Intersects(ppBullets[j]->m_animatedxmOOBB))	//오브젝트의 OOBB를 가져다가 총알을 나타내는 OOBB와 인터섹트. TRUE면 충돌됨.
 			{
-				if (ppBullets[j]->m_bActive && m_Objects[i]->HierarchyCollisionCheck(ppBullets[j]->m_xmOOBB))
+				if (m_Objects[i]->live)
 				{
 					ppBullets[j]->Reset();
-					m_Objects[i]->live = false;
-					break;
+					m_ExplodeObjects[i]->SetPosition(m_Objects[i]->GetPosition());
+					m_ExplodeObjects[i]->live = true;
 				}
+				m_Objects[i]->live = false;
+				break;
 			}
 		}
 	}

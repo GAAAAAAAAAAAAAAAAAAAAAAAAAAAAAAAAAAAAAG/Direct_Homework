@@ -346,6 +346,7 @@ void CGameFramework::OnProcessingKeyboardMessage(HWND hWnd, UINT nMessageID, WPA
 				case VK_CONTROL:
 					((CAirplanePlayer*)m_pPlayer)->FireBullet(m_pLockedObject);
 					m_pLockedObject = NULL;
+					m_pPlayer->Animate(m_GameTimer.GetTimeElapsed());	//Ãß°¡
 					break;
 				case 's':
 				case 'S':

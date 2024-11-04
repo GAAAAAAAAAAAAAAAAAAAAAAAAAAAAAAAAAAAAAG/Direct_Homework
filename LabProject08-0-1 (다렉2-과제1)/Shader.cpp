@@ -1025,3 +1025,122 @@ D3D12_SHADER_BYTECODE CScrollMenuShader::CreatePixelShader()
 {
 	return(CShader::CompileShaderFromFile(L"Shaders.hlsl", "PSScrollTexture", "ps_5_1", &m_pd3dPixelShaderBlob));
 }
+
+//--------------------------------------------------------------------
+//추가------------------------------------------------------------
+CSpriteAnimationShader::CSpriteAnimationShader()
+{
+
+}
+
+
+CSpriteAnimationShader::~CSpriteAnimationShader()
+{
+
+}
+
+void CSpriteAnimationShader::CreateShader(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* pd3dGraphicsRootSignature)
+{
+	m_nPipelineStates = 1;
+	m_ppd3dPipelineStates = new ID3D12PipelineState * [m_nPipelineStates];
+
+	CShader::CreateShader(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature);
+
+	if (m_pd3dVertexShaderBlob) m_pd3dVertexShaderBlob->Release();
+	if (m_pd3dPixelShaderBlob) m_pd3dPixelShaderBlob->Release();
+
+	if (m_d3dPipelineStateDesc.InputLayout.pInputElementDescs) delete[] m_d3dPipelineStateDesc.InputLayout.pInputElementDescs;
+}
+
+D3D12_RASTERIZER_DESC CSpriteAnimationShader::CreateRasterizerState()
+{
+	D3D12_RASTERIZER_DESC d3dRasterizerDesc;
+	::ZeroMemory(&d3dRasterizerDesc, sizeof(D3D12_RASTERIZER_DESC));
+	d3dRasterizerDesc.FillMode = D3D12_FILL_MODE_SOLID;
+	d3dRasterizerDesc.CullMode = D3D12_CULL_MODE_NONE;
+	d3dRasterizerDesc.FrontCounterClockwise = FALSE;
+	d3dRasterizerDesc.DepthBias = 0;
+	d3dRasterizerDesc.DepthBiasClamp = 0.0f;
+	d3dRasterizerDesc.SlopeScaledDepthBias = 0.0f;
+	d3dRasterizerDesc.DepthClipEnable = TRUE;
+	d3dRasterizerDesc.MultisampleEnable = FALSE;
+	d3dRasterizerDesc.AntialiasedLineEnable = FALSE;
+	d3dRasterizerDesc.ForcedSampleCount = 0;
+	d3dRasterizerDesc.ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF;
+
+	return(d3dRasterizerDesc);
+}
+
+void CSpriteAnimationShader::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, void* pContext)
+{
+	//TODO; 오브젝트들한테 폭발 텍스쳐, 메쉬 넣어주기
+
+	m_nObjects = 30;
+	m_ppObjects = new CGameObject * [m_nObjects];
+
+	CTexture* pTexture = new CTexture(1, RESOURCE_TEXTURE2D, 0, 1);
+	pTexture->LoadTextureFromWICFile(pd3dDevice, pd3dCommandList, L"Image/Explode.png", RESOURCE_TEXTURE2D, 0);
+	CScene::CreateShaderResourceViews(pd3dDevice, pTexture, 0, 8);
+
+	CMaterial* pMaterial = new CMaterial();
+	pMaterial->SetTexture(pTexture);
+	
+	CTexturedRectMesh* pExplodeMesh = new CTexturedRectMesh(pd3dDevice, pd3dCommandList, 16.0f, 16.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+	CExplodeObject* pExplodeObject = NULL;
+
+	for (int i = 0; i < m_nObjects; ++i)
+	{
+		pExplodeObject = new CExplodeObject();
+		pExplodeObject->SetMesh(0, pExplodeMesh);
+		pExplodeObject->SetMaterial(0, pMaterial);
+		m_ppObjects[i] = pExplodeObject;
+		m_ppObjects[i]->live = false;
+	}
+}
+
+void CSpriteAnimationShader::ReleaseObjects()
+{
+	CObjectsShader::ReleaseObjects();
+}
+
+void CSpriteAnimationShader::ReleaseUploadBuffers()
+{
+	CObjectsShader::ReleaseUploadBuffers();
+}
+
+void CSpriteAnimationShader::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera, int nPipelineState)
+{
+	XMFLOAT3 xmf3CameraPosition = pCamera->GetPosition();
+	for (int j = 0; j < m_nObjects; j++)
+	{
+		if (m_ppObjects[j]) m_ppObjects[j]->SetLookAt(xmf3CameraPosition, XMFLOAT3(0.0f, 1.0f, 0.0f));
+	}
+
+	CObjectsShader::Render(pd3dCommandList, pCamera);
+}
+
+D3D12_INPUT_LAYOUT_DESC CSpriteAnimationShader::CreateInputLayout()
+{
+	UINT nInputElementDescs = 2;
+	D3D12_INPUT_ELEMENT_DESC* pd3dInputElementDescs = new D3D12_INPUT_ELEMENT_DESC[nInputElementDescs];
+
+	pd3dInputElementDescs[0] = { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 };
+	pd3dInputElementDescs[1] = { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 1, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 };
+
+
+	D3D12_INPUT_LAYOUT_DESC d3dInputLayoutDesc;
+	d3dInputLayoutDesc.pInputElementDescs = pd3dInputElementDescs;
+	d3dInputLayoutDesc.NumElements = nInputElementDescs;
+
+	return(d3dInputLayoutDesc);
+}
+
+D3D12_SHADER_BYTECODE CSpriteAnimationShader::CreateVertexShader()
+{
+	return(CShader::CompileShaderFromFile(L"Shaders.hlsl", "VSSpriteTexture", "vs_5_1", &m_pd3dVertexShaderBlob));
+}
+
+D3D12_SHADER_BYTECODE CSpriteAnimationShader::CreatePixelShader()
+{
+	return(CShader::CompileShaderFromFile(L"Shaders.hlsl", "PSSpriteTexture", "ps_5_1", &m_pd3dPixelShaderBlob));
+}

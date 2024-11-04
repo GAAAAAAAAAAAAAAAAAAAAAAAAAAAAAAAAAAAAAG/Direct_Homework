@@ -593,7 +593,7 @@ void CStandardMesh::LoadMeshFromFile(ID3D12Device *pd3dDevice, ID3D12GraphicsCom
 		}
 	}
 	//Ãß°¡
-	CalculateOBB();
+	//CalculateOBB();
 }
 
 void CStandardMesh::Render(ID3D12GraphicsCommandList *pd3dCommandList, int nSubSet)
